@@ -1,0 +1,144 @@
+
+body {
+  background: linear-gradient(135deg, #1e293b 0%, #6d28d9 50%, #1e293b 100%);
+  color: #fff;
+  font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+  margin: 0;
+}
+
+.dashboard-container {
+  min-height: 100vh;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 16px;
+}
+
+.dashboard-header {
+  background: rgba(30,41,59,0.7);
+  border-bottom: 1px solid #334155;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 24px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dashboard-title {
+  font-size: 2rem;
+  font-weight: bold;
+  background: linear-gradient(90deg, #a78bfa, #f472b6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.dashboard-card {
+  background: rgba(30,41,59,0.7);
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.dashboard-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+}
+
+.dashboard-section-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.dashboard-btn {
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  border: none;
+  background: linear-gradient(90deg, #6d28d9, #f472b6);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.dashboard-btn:hover {
+  background: linear-gradient(90deg, #4c1d95, #be185d);
+}
+
+.dashboard-status-connected {
+  background: rgba(22,163,74,0.2);
+  color: #22c55e;
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+}
+.dashboard-status-disconnected {
+  background: rgba(239,68,68,0.2);
+  color: #ef4444;
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+}
+
+.dashboard-trade-win {
+  color: #22c55e;
+  background: #bbf7d0;
+  border: 1px solid #22c55e;
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-weight: bold;
+}
+.dashboard-trade-loss {
+  color: #ef4444;
+  background: #fecaca;
+  border: 1px solid #ef4444;
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-weight: bold;
+}
+.dashboard-trade-open {
+  color: #eab308;
+  background: #fef08a;
+  border: 1px solid #eab308;
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-weight: bold;
+}
+
+.dashboard-notification-success {
+  background: rgba(22,163,74,0.2);
+  border-left: 4px solid #22c55e;
+}
+.dashboard-notification-error {
+  background: rgba(239,68,68,0.2);
+  border-left: 4px solid #ef4444;
+}
+.dashboard-notification-warning {
+  background: rgba(234,179,8,0.2);
+  border-left: 4px solid #eab308;
+}
+.dashboard-notification-info {
+  background: rgba(59,130,246,0.2);
+  border-left: 4px solid #3b82f6;
+}
+
+.input {
+  width: 100%;
+  padding: 8px 12px;
+  background: #334155;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+.input:focus {
+  border-color: #a78bfa;
+  outline: none;
+}
