@@ -1,9 +1,13 @@
 import React from 'react';
-import TradingDashboard from './main';
 import './index.css';
+import SignalsBoard from './SignalsBoard';
 
 function App() {
-  return <TradingDashboard />;
+  return (
+    <div className="App min-h-screen bg-gray-100">
+      <SignalsBoard />
+    </div>
+  );
 }
 
 export default App;
