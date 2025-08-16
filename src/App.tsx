@@ -1,9 +1,10 @@
 import React from 'react';
-import TradingDashboard from './main';
+import TradingSignalsBot from './main';
 import './index.css';
 
+
 function App() {
-  return <TradingDashboard />;
+  return <TradingSignalsBot />;
 }
 
 export default App;
