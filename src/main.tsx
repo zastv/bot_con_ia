@@ -96,10 +96,26 @@ const TradingSignalsBot = () => {
   const tfScore = tfSignals.reduce((a: number, b) => a + b, 0);
       let confidence = 60 + Math.abs(tfScore) * 8 + Math.random() * 20;
       confidence = Math.min(99, Math.round(confidence));
-      let notes = 'Condiciones normales.';
-      if (tfScore >= 3) notes = 'Alta probabilidad, varias temporalidades alineadas.';
-      else if (tfScore <= -3) notes = 'Alta probabilidad, varias temporalidades alineadas.';
-      else if (confidence < 70) notes = 'Señal débil, operar con precaución.';
+  let notes = '';
+  if (tfScore >= 3) {
+    notes = `Alta probabilidad: Coincidencia de tendencia en ${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}. 
+Se detecta impulso fuerte y confirmación por indicadores técnicos (RSI, MACD, medias móviles). 
+El precio está cerca de soporte/resistencia relevante y el volumen acompaña el movimiento. 
+Se recomienda gestión de riesgo adecuada.`;
+  } else if (tfScore <= -3) {
+    notes = `Alta probabilidad: Coincidencia de tendencia en ${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}. 
+Se observa agotamiento de la tendencia previa y señales de reversión en temporalidades mayores. 
+Confirmación por patrones de velas y divergencia en indicadores. 
+Operar con gestión de riesgo.`;
+  } else if (confidence < 70) {
+    notes = `Señal débil: Las temporalidades no están alineadas o hay alta volatilidad. 
+Falta confirmación clara por indicadores técnicos. 
+Evitar operar con lotaje alto y esperar mejor oportunidad.`;
+  } else {
+    notes = `Condiciones normales: Señal generada por coincidencia parcial en temporalidades (${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}). 
+Algunos indicadores confirman la entrada, pero el contexto no es óptimo. 
+Revisar calendario económico y contexto de mercado antes de operar.`;
+  }
       const signal: Signal = {
         id: Date.now(),
         pair: pairObj.symbol,
