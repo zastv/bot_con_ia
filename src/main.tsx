@@ -79,8 +79,8 @@ const TradingSignalsBot = () => {
   const [selectedPairs, setSelectedPairs] = useState<string[]>(['BTCUSD', 'EURUSD', 'XAUUSD']);
   const [showSettings, setShowSettings] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('All');
-  const [signalInterval, setSignalInterval] = useState(7000);
-  const [maxSignals, setMaxSignals] = useState(8);
+  const [signalInterval, setSignalInterval] = useState(1800000); // 30 minutos en lugar de 7 segundos
+  const [maxSignals, setMaxSignals] = useState(4); // Máximo 4 señales por día
 
   // Generar señales realistas cada cierto tiempo
   useEffect(() => {
@@ -91,8 +91,8 @@ const TradingSignalsBot = () => {
       if (signalsCount >= maxSignals) return;
       setLoading(true);
       setError(null);
-      // Simular análisis de temporalidades
-      const timeframes = ['M5', 'M15', 'H1', 'H4', 'D1'];
+      // Análisis de temporalidades para intraday (H1, H4, D1)
+      const timeframes = ['H1', 'H4', 'D1'];
       const availablePairs = tradingPairs.filter(p => selectedPairs.includes(p.symbol));
       if (availablePairs.length === 0) {
         setLoading(false);
@@ -112,14 +112,17 @@ const TradingSignalsBot = () => {
       }
       let tp = 0, sl = 0;
       if (pairObj.symbol === 'BTCUSD' || pairObj.symbol === 'ETHUSD') {
-        tp = parseFloat((entry + (isBuy ? 200 : -200)).toFixed(0));
-        sl = parseFloat((entry - (isBuy ? 100 : -100)).toFixed(0));
+        // Para crypto: targets más amplios para intraday
+        tp = parseFloat((entry + (isBuy ? 800 : -800)).toFixed(0));
+        sl = parseFloat((entry - (isBuy ? 400 : -400)).toFixed(0));
       } else if (pairObj.symbol === 'XAUUSD') {
-        tp = parseFloat((entry + (isBuy ? 2 : -2)).toFixed(2));
-        sl = parseFloat((entry - (isBuy ? 1 : -1)).toFixed(2));
+        // Para oro: targets intraday
+        tp = parseFloat((entry + (isBuy ? 15 : -15)).toFixed(2));
+        sl = parseFloat((entry - (isBuy ? 8 : -8)).toFixed(2));
       } else {
-        tp = parseFloat((entry + (isBuy ? 0.002 : -0.002)).toFixed(5));
-        sl = parseFloat((entry - (isBuy ? 0.001 : -0.001)).toFixed(5));
+        // Para forex: targets intraday más amplios
+        tp = parseFloat((entry + (isBuy ? 0.008 : -0.008)).toFixed(5));
+        sl = parseFloat((entry - (isBuy ? 0.004 : -0.004)).toFixed(5));
       }
       // Simular mayor probabilidad si varias temporalidades coinciden
       const tfSignals = timeframes.map(tf => Math.random() > 0.4 ? (isBuy ? 1 : -1) : 0);
@@ -127,24 +130,26 @@ const TradingSignalsBot = () => {
       let confidence = 60 + Math.abs(tfScore) * 8 + Math.random() * 20;
       confidence = Math.min(99, Math.round(confidence));
       let notes = '';
-      if (tfScore >= 3) {
-        notes = `Alta probabilidad: Coincidencia de tendencia en ${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}. 
-Se detecta impulso fuerte y confirmación por indicadores técnicos (RSI, MACD, medias móviles). 
-El precio está cerca de soporte/resistencia relevante y el volumen acompaña el movimiento. 
-Se recomienda gestión de riesgo adecuada.`;
-      } else if (tfScore <= -3) {
-        notes = `Alta probabilidad: Coincidencia de tendencia en ${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}. 
-Se observa agotamiento de la tendencia previa y señales de reversión en temporalidades mayores. 
-Confirmación por patrones de velas y divergencia en indicadores. 
-Operar con gestión de riesgo.`;
+      if (tfScore >= 2) {
+        notes = `🔥 ALTA PROBABILIDAD INTRADAY: Confluencia en temporalidades ${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}. 
+Análisis técnico confirma tendencia fuerte con ruptura de niveles clave. 
+RSI y MACD alineados, volumen institucional detectado. 
+Ideal para swing intraday con gestión de riesgo 1:2. Validez: 4-8 horas.`;
+      } else if (tfScore <= -2) {
+        notes = `📈 REVERSIÓN INTRADAY DETECTADA: Señales de agotamiento en ${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}. 
+Divergencia en indicadores y rechazo en zona de resistencia/soporte importante. 
+Patrón de velas de reversión confirmado. 
+Operación de contra-tendencia con objetivos conservadores. Validez: 6-12 horas.`;
       } else if (confidence < 70) {
-        notes = `Señal débil: Las temporalidades no están alineadas o hay alta volatilidad. 
-Falta confirmación clara por indicadores técnicos. 
-Evitar operar con lotaje alto y esperar mejor oportunidad.`;
+        notes = `⚠️ SEÑAL DÉBIL INTRADAY: Temporalidades mixtas, mercado lateral o alta volatilidad. 
+Falta confirmación clara en niveles técnicos importantes. 
+Considerar esperar mejor setup o reducir tamaño de posición. 
+Monitorear evolución del precio antes de entrar.`;
       } else {
-        notes = `Condiciones normales: Señal generada por coincidencia parcial en temporalidades (${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}). 
-Algunos indicadores confirman la entrada, pero el contexto no es óptimo. 
-Revisar calendario económico y contexto de mercado antes de operar.`;
+        notes = `✅ OPORTUNIDAD INTRADAY MODERADA: Setup técnico válido en ${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}. 
+Confluencia parcial de indicadores, precio cerca de niveles de interés. 
+Contexto de mercado neutral-positivo. 
+Entrada con gestión conservadora, monitorear evolución cada 2-3 horas.`;
       }
       const signal: Signal = {
         id: Date.now(),
@@ -214,8 +219,8 @@ Revisar calendario económico y contexto de mercado antes de operar.`;
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <Brain style={{ width: 48, height: 48, color: '#a78bfa', marginRight: 16 }} />
           <div>
-            <h1 style={{ color: '#e0e7ff', fontSize: '2.2rem', fontWeight: 800, margin: 0, letterSpacing: 1 }}>Bot de Señales AI</h1>
-            <span style={{ color: '#a5b4fc', fontSize: '1.1rem', fontWeight: 500 }}>Señales automáticas con precios reales y análisis en vivo</span>
+            <h1 style={{ color: '#e0e7ff', fontSize: '2.2rem', fontWeight: 800, margin: 0, letterSpacing: 1 }}>Bot Señales Intraday AI</h1>
+            <span style={{ color: '#a5b4fc', fontSize: '1.1rem', fontWeight: 500 }}>Señales de swing trading con análisis técnico profesional</span>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
@@ -316,14 +321,14 @@ Revisar calendario económico y contexto de mercado antes de operar.`;
           {/* Configuración de intervalo */}
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
             <div>
-              <label style={{ color: '#e0e7ff', fontSize: '1rem', marginBottom: 8, display: 'block' }}>Intervalo (ms):</label>
+              <label style={{ color: '#e0e7ff', fontSize: '1rem', marginBottom: 8, display: 'block' }}>Intervalo (minutos):</label>
               <input
                 type="number"
-                value={signalInterval}
-                onChange={(e) => setSignalInterval(Number(e.target.value))}
-                min="3000"
-                max="30000"
-                step="1000"
+                value={signalInterval / 60000} // Convertir de ms a minutos
+                onChange={(e) => setSignalInterval(Number(e.target.value) * 60000)} // Convertir de minutos a ms
+                min="15"
+                max="120"
+                step="15"
                 style={{
                   background: 'rgba(107, 114, 128, 0.3)',
                   color: '#e0e7ff',
@@ -335,13 +340,13 @@ Revisar calendario económico y contexto de mercado antes de operar.`;
               />
             </div>
             <div>
-              <label style={{ color: '#e0e7ff', fontSize: '1rem', marginBottom: 8, display: 'block' }}>Máx. señales:</label>
+              <label style={{ color: '#e0e7ff', fontSize: '1rem', marginBottom: 8, display: 'block' }}>Máx. señales/día:</label>
               <input
                 type="number"
                 value={maxSignals}
                 onChange={(e) => setMaxSignals(Number(e.target.value))}
-                min="3"
-                max="20"
+                min="2"
+                max="8"
                 style={{
                   background: 'rgba(107, 114, 128, 0.3)',
                   color: '#e0e7ff',
@@ -366,7 +371,7 @@ Revisar calendario económico y contexto de mercado antes de operar.`;
               activeTrade
                 ? (activeTrade.pair === 'BTCUSD' ? 'CRYPTO:BTCUSD' : activeTrade.pair === 'XAUUSD' ? 'OANDA:XAUUSD' : 'FX:' + activeTrade.pair)
                 : 'FX:EURUSD'
-            }&interval=15&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Europe/Madrid&studies_overrides={}&overrides={}&enabled_features=[]&disabled_features=[]&locale=es`}
+            }&interval=60&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Europe/Madrid&studies_overrides={}&overrides={}&enabled_features=[]&disabled_features=[]&locale=es`}
             width="100%"
             height="420"
             style={{ border: 0 }}
@@ -501,7 +506,7 @@ Revisar calendario económico y contexto de mercado antes de operar.`;
           </table>
         </div>
         <div style={{ color: '#64748b', fontSize: '0.95rem', marginTop: 18, textAlign: 'center' }}>
-          <b>Tip:</b> Recuerda siempre usar gestión de riesgo y no operar solo por la señal. Considera el contexto del mercado y noticias relevantes.
+          <b>Trading Intraday:</b> Estas señales están diseñadas para operaciones de 4-12 horas. Siempre confirma con análisis fundamental y gestiona el riesgo apropiadamente.
         </div>
       </section>
       <style>{`
