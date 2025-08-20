@@ -72,11 +72,15 @@ const TradingSignalsBot = () => {
 
   return (
     <div className="dashboard-container" style={{ minHeight: '100vh', background: 'radial-gradient(circle at 50% 0%, #6d28d9 0%, #181e2a 100%)', padding: 0 }}>
-      {/* Widget de TradingView */}
+      {/* Widget de TradingView dinámico según el par activo */}
       <div style={{ maxWidth: 1200, margin: '32px auto 0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 32px #0002' }}>
         <iframe
           title="TradingView"
-          src="https://es.tradingview.com/widgetembed/?frameElementId=tradingview_6T69ANL1&symbol=FX:EURUSD&interval=15&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Europe/Madrid&studies_overrides={}&overrides={}&enabled_features=[]&disabled_features=[]&locale=es"
+          src={`https://es.tradingview.com/widgetembed/?frameElementId=tradingview_6T69ANL1&symbol=${
+            activeTrade
+              ? (activeTrade.pair === 'BTCUSD' ? 'CRYPTO:BTCUSD' : activeTrade.pair === 'XAUUSD' ? 'OANDA:XAUUSD' : 'FX:' + activeTrade.pair)
+              : 'FX:EURUSD'
+          }&interval=15&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Europe/Madrid&studies_overrides={}&overrides={}&enabled_features=[]&disabled_features=[]&locale=es`}
           width="100%"
           height="420"
           style={{ border: 0 }}
