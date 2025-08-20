@@ -72,6 +72,17 @@ const TradingSignalsBot = () => {
 
   return (
     <div className="dashboard-container" style={{ minHeight: '100vh', background: 'radial-gradient(circle at 50% 0%, #6d28d9 0%, #181e2a 100%)', padding: 0 }}>
+      {/* Widget de TradingView */}
+      <div style={{ maxWidth: 1200, margin: '32px auto 0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 32px #0002' }}>
+        <iframe
+          title="TradingView"
+          src="https://es.tradingview.com/widgetembed/?frameElementId=tradingview_6T69ANL1&symbol=FX:EURUSD&interval=15&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=dark&style=1&timezone=Europe/Madrid&studies_overrides={}&overrides={}&enabled_features=[]&disabled_features=[]&locale=es"
+          width="100%"
+          height="420"
+          style={{ border: 0 }}
+          allowFullScreen
+        ></iframe>
+      </div>
       <div className="dashboard-header" style={{ background: 'rgba(30, 27, 75, 0.95)', borderRadius: 16, margin: '32px auto 0', maxWidth: 1200, padding: 32, boxShadow: '0 4px 32px #0002' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <Brain style={{ width: 40, height: 40, color: '#a78bfa', marginRight: 12 }} />
