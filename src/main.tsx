@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar
@@ -53,8 +54,6 @@ const TradingSignalsBot = () => {
         entry,
         tp,
         sl,
-        timestamp: new Date().toLocaleString(),
-        notes,
       };
       setSignals(prev => [signal, ...prev.slice(0, 19)]);
       // Si no hay operación activa, la primera señal generada será la activa

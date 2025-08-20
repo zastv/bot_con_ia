@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1,
+    "pair": "EURUSD",
+    "type": "BUY",
+    "entry": 1.0850,
+    "sl": 1.0800,
+    "tp": 1.0900,
+    "timestamp": "2025-08-14T12:00:00Z"
+  },
+  {
+    "id": 2,
+    "pair": "BTCUSD",
+    "type": "SELL",
+    "entry": 65000,
+    "sl": 66000,
+    "tp": 63000,
+    "timestamp": "2025-08-14T12:05:00Z"
+  },
+  {
+    "id": 3,
+    "pair": "XAUUSD",
+    "type": "BUY",
+    "entry": 2300,
+    "sl": 2280,
+    "tp": 2350,
+    "timestamp": "2025-08-14T12:10:00Z"
+  }
+]

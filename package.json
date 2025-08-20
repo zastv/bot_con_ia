@@ -1,8 +1,4 @@
 {
-  "name": "bot-con-ia-dashboard",
-  "version": "1.0.0",
-  "description": "Dashboard React para sistema de Trading IA",
-  "main": "main.tsx",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
@@ -10,6 +6,31 @@
     "eject": "react-scripts eject"
   },
   "dependencies": {
+    "lucide-react": "^0.292.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "^5.0.1",
+    "recharts": "^2.7.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.44",
+    "@types/react-dom": "^18.2.17",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "typescript": "^4.9.5"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+=======
     "lucide-react": "^0.292.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
