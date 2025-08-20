@@ -6,7 +6,13 @@ const tradingPairs = [
   { symbol: 'XAUUSD', api: 'XAUUSD', display: 'Oro (XAUUSD)' },
   { symbol: 'EURUSD', api: 'EURUSD', display: 'Euro/Dólar (EURUSD)' },
   { symbol: 'GBPUSD', api: 'GBPUSD', display: 'Libra/Dólar (GBPUSD)' },
+  { symbol: 'USDJPY', api: 'USDJPY', display: 'Dólar/Yen (USDJPY)' },
+  { symbol: 'AUDUSD', api: 'AUDUSD', display: 'Dólar Australiano (AUDUSD)' },
+  { symbol: 'USDCAD', api: 'USDCAD', display: 'Dólar Canadiense (USDCAD)' },
   { symbol: 'BTCUSD', api: 'BTCUSDT', display: 'Bitcoin (BTCUSD)' },
+  { symbol: 'ETHUSD', api: 'ETHUSDT', display: 'Ethereum (ETHUSD)' },
+  { symbol: 'EURJPY', api: 'EURJPY', display: 'Euro/Yen (EURJPY)' },
+  { symbol: 'GBPJPY', api: 'GBPJPY', display: 'Libra/Yen (GBPJPY)' },
 ];
 
 type Signal = {
@@ -54,9 +60,14 @@ const TradingSignalsBot = () => {
   useEffect(() => {
     if (!running) return;
     let cancelled = false;
+    let signalsCount = 0;
+    const maxSignals = 8;
     const interval = setInterval(async () => {
+      if (signalsCount >= maxSignals) return;
       setLoading(true);
       setError(null);
+      // Simular análisis de temporalidades
+      const timeframes = ['M5', 'M15', 'H1', 'H4', 'D1'];
       const pairObj = tradingPairs[Math.floor(Math.random() * tradingPairs.length)];
       const isBuy = Math.random() > 0.5;
       let entry = 0;
@@ -70,7 +81,7 @@ const TradingSignalsBot = () => {
         return;
       }
       let tp = 0, sl = 0;
-      if (pairObj.symbol === 'BTCUSD') {
+      if (pairObj.symbol === 'BTCUSD' || pairObj.symbol === 'ETHUSD') {
         tp = parseFloat((entry + (isBuy ? 200 : -200)).toFixed(0));
         sl = parseFloat((entry - (isBuy ? 100 : -100)).toFixed(0));
       } else if (pairObj.symbol === 'XAUUSD') {
@@ -80,8 +91,15 @@ const TradingSignalsBot = () => {
         tp = parseFloat((entry + (isBuy ? 0.002 : -0.002)).toFixed(5));
         sl = parseFloat((entry - (isBuy ? 0.001 : -0.001)).toFixed(5));
       }
-      const confidence = Math.floor(60 + Math.random() * 40);
-      const notes = confidence > 90 ? 'Alta probabilidad, seguir gestión de riesgo.' : confidence < 70 ? 'Señal débil, operar con precaución.' : 'Condiciones normales.';
+      // Simular mayor probabilidad si varias temporalidades coinciden
+      const tfSignals = timeframes.map(tf => Math.random() > 0.4 ? (isBuy ? 1 : -1) : 0);
+  const tfScore = tfSignals.reduce((a: number, b) => a + b, 0);
+      let confidence = 60 + Math.abs(tfScore) * 8 + Math.random() * 20;
+      confidence = Math.min(99, Math.round(confidence));
+      let notes = 'Condiciones normales.';
+      if (tfScore >= 3) notes = 'Alta probabilidad, varias temporalidades alineadas.';
+      else if (tfScore <= -3) notes = 'Alta probabilidad, varias temporalidades alineadas.';
+      else if (confidence < 70) notes = 'Señal débil, operar con precaución.';
       const signal: Signal = {
         id: Date.now(),
         pair: pairObj.symbol,
@@ -95,11 +113,15 @@ const TradingSignalsBot = () => {
         notes,
       };
       if (!cancelled) {
-        setSignals(prev => [signal, ...prev.slice(0, 19)]);
+        setSignals(prev => {
+          if (prev.length >= maxSignals) return prev;
+          signalsCount = prev.length + 1;
+          return [signal, ...prev];
+        });
         setActiveTrade(prev => prev || signal);
         setLoading(false);
       }
-    }, 6000);
+    }, 7000);
     return () => {
       cancelled = true;
       clearInterval(interval);
