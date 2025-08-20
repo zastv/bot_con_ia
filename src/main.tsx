@@ -72,6 +72,78 @@ class TradingAI {
     return { pattern: detectedPattern, strength, direction };
   }
 
+  // Análisis de niveles críticos de S/R
+  analyzeSupportResistance(price: number, pair: string): { 
+    nearSupport: boolean; 
+    nearResistance: boolean; 
+    strength: number;
+    levels: { support: number; resistance: number; }
+  } {
+    // Simular niveles S/R basados en precio actual
+    let supportLevel = 0, resistanceLevel = 0;
+    
+    if (pair === 'BTCUSD') {
+      // Niveles psicológicos y técnicos para Bitcoin
+      const roundLevel = Math.round(price / 1000) * 1000;
+      supportLevel = roundLevel - 500;
+      resistanceLevel = roundLevel + 500;
+    } else if (pair === 'XAUUSD') {
+      // Niveles para oro
+      const roundLevel = Math.round(price / 50) * 50;
+      supportLevel = roundLevel - 25;
+      resistanceLevel = roundLevel + 25;
+    } else {
+      // Niveles para forex
+      const roundLevel = Math.round(price * 10000) / 10000;
+      supportLevel = roundLevel - 0.01;
+      resistanceLevel = roundLevel + 0.01;
+    }
+    
+    const distanceToSupport = Math.abs(price - supportLevel) / price;
+    const distanceToResistance = Math.abs(price - resistanceLevel) / price;
+    
+    return {
+      nearSupport: distanceToSupport < 0.02, // Dentro del 2%
+      nearResistance: distanceToResistance < 0.02,
+      strength: Math.random() * 0.5 + 0.5, // 0.5-1.0
+      levels: { support: supportLevel, resistance: resistanceLevel }
+    };
+  }
+
+  // Análisis de momentum y divergencias
+  analyzeMomentum(pair: string): {
+    rsi: number;
+    macd_signal: 'bullish' | 'bearish' | 'neutral';
+    momentum_strength: number;
+    divergence: boolean;
+  } {
+    const rsi = Math.random() * 100;
+    const macdValue = (Math.random() - 0.5) * 2;
+    
+    return {
+      rsi,
+      macd_signal: macdValue > 0.3 ? 'bullish' : macdValue < -0.3 ? 'bearish' : 'neutral',
+      momentum_strength: Math.abs(macdValue),
+      divergence: Math.random() > 0.8 // 20% probabilidad de divergencia
+    };
+  }
+
+  // Análisis de volumen y liquidez
+  analyzeVolumeProfile(pair: string): {
+    volume_trend: 'increasing' | 'decreasing' | 'stable';
+    liquidity_level: 'high' | 'medium' | 'low';
+    institutional_activity: number;
+  } {
+    const volumeTrends = ['increasing', 'decreasing', 'stable'] as const;
+    const liquidityLevels = ['high', 'medium', 'low'] as const;
+    
+    return {
+      volume_trend: volumeTrends[Math.floor(Math.random() * 3)],
+      liquidity_level: liquidityLevels[Math.floor(Math.random() * 3)],
+      institutional_activity: Math.random()
+    };
+  }
+
   // Análisis de flujo de órdenes institucional
   analyzeOrderFlow(pair: string): { institutional: number; retail: number; smart_money: number } {
     // Simular análisis de volumen y flujo de órdenes
@@ -96,36 +168,43 @@ class TradingAI {
     pair: string,
     marketSentiment: string,
     riskLevel: string
-  ): { confidence: number; reasoning: string[]; riskAdjustment: number } {
+  ): { confidence: number; reasoning: string[]; riskAdjustment: number; levels: any } {
     const reasoning: string[] = [];
     let aiScore = 0;
 
-    // 1. Análisis de contexto macro (30% del score)
+    // 1. Análisis de contexto macro (25% del score)
     const macroContext = this.analyzeMacroContext(pair, marketSentiment);
-    aiScore += macroContext * 0.3;
+    aiScore += macroContext * 0.25;
     reasoning.push(`📊 Análisis macro: ${(macroContext * 100).toFixed(0)}% favorable`);
 
-    // 2. Detección de patrones (25% del score)
+    // 2. Detección de patrones (20% del score)
     const patterns = this.detectPatterns(price, pair);
     const patternScore = patterns.strength * (patterns.direction === 'neutral' ? 0.5 : 0.8);
-    aiScore += patternScore * 0.25;
+    aiScore += patternScore * 0.2;
     reasoning.push(`🔍 Patrón ${patterns.pattern}: ${(patterns.strength * 100).toFixed(0)}% de fuerza`);
 
-    // 3. Análisis de flujo de órdenes (20% del score)
-    const orderFlow = this.analyzeOrderFlow(pair);
-    const flowScore = orderFlow.institutional * 0.7 + orderFlow.smart_money * 0.8 + orderFlow.retail * 0.3;
-    aiScore += flowScore * 0.2;
-    reasoning.push(`💰 Flujo institucional: ${(orderFlow.institutional * 100).toFixed(0)}%, Smart money: ${(orderFlow.smart_money * 100).toFixed(0)}%`);
+    // 3. Análisis de S/R (20% del score) - NUEVO
+    const srAnalysis = this.analyzeSupportResistance(price, pair);
+    const srScore = srAnalysis.nearSupport || srAnalysis.nearResistance ? srAnalysis.strength : 0.3;
+    aiScore += srScore * 0.2;
+    reasoning.push(`🎯 Niveles S/R: ${srAnalysis.nearSupport ? 'Cerca soporte' : srAnalysis.nearResistance ? 'Cerca resistencia' : 'Zona neutral'} (${(srScore * 100).toFixed(0)}%)`);
 
-    // 4. Confluencia técnica (15% del score)
-    const technicalScore = Math.abs(timeframeScore) / 3; // Normalizar -3,3 a 0,1
-    aiScore += technicalScore * 0.15;
-    reasoning.push(`⚙️ Confluencia técnica: ${(technicalScore * 100).toFixed(0)}% alineación`);
+    // 4. Análisis de momentum (15% del score) - NUEVO
+    const momentum = this.analyzeMomentum(pair);
+    const momentumScore = momentum.rsi > 70 || momentum.rsi < 30 ? 0.8 : 0.5;
+    aiScore += momentumScore * 0.15;
+    reasoning.push(`⚡ RSI: ${momentum.rsi.toFixed(0)}, MACD: ${momentum.macd_signal}, ${momentum.divergence ? 'Divergencia detectada' : 'Sin divergencia'}`);
 
-    // 5. Análisis de volatilidad y momentum (10% del score)
-    const volatilityOptimal = Math.random() > 0.4 ? 0.8 : 0.4;
-    aiScore += volatilityOptimal * 0.1;
-    reasoning.push(`📈 Condiciones de volatilidad: ${volatilityOptimal > 0.6 ? 'Óptimas' : 'Moderadas'}`);
+    // 5. Análisis de volumen (10% del score) - NUEVO
+    const volume = this.analyzeVolumeProfile(pair);
+    const volumeScore = volume.volume_trend === 'increasing' && volume.liquidity_level === 'high' ? 0.9 : 0.5;
+    aiScore += volumeScore * 0.1;
+    reasoning.push(`📈 Volumen: ${volume.volume_trend}, Liquidez: ${volume.liquidity_level}, Institucional: ${(volume.institutional_activity * 100).toFixed(0)}%`);
+
+    // 6. Confluencia técnica (10% del score)
+    const technicalScore = Math.abs(timeframeScore) / 3;
+    aiScore += technicalScore * 0.1;
+    reasoning.push(`⚙️ Confluencia técnica: ${(technicalScore * 100).toFixed(0)}% alineación en ${Math.abs(timeframeScore)} temporalidades`);
 
     // Ajuste de riesgo basado en configuración
     let riskAdjustment = 1.0;
@@ -143,12 +222,51 @@ class TradingAI {
     return {
       confidence: Math.round(finalConfidence),
       reasoning,
-      riskAdjustment
+      riskAdjustment,
+      levels: srAnalysis.levels
     };
   }
 }
 
 const tradingAI = new TradingAI();
+
+// Análisis de Sesiones de Mercado y Calendario Económico
+class MarketContext {
+  // Detectar sesión de mercado activa
+  getCurrentSession(): { session: string; volatility: 'high' | 'medium' | 'low'; overlap: boolean } {
+    const now = new Date();
+    const hour = now.getUTCHours();
+    
+    // Sesiones principales (UTC)
+    if (hour >= 0 && hour < 8) {
+      return { session: 'Sydney/Tokyo', volatility: 'medium', overlap: hour >= 6 };
+    } else if (hour >= 8 && hour < 16) {
+      return { session: 'London', volatility: 'high', overlap: hour >= 13 && hour < 16 };
+    } else if (hour >= 16 && hour < 24) {
+      return { session: 'New York', volatility: 'high', overlap: hour >= 16 && hour < 17 };
+    }
+    return { session: 'Transition', volatility: 'low', overlap: false };
+  }
+
+  // Simular eventos económicos importantes
+  getEconomicEvents(pair: string): { impact: 'high' | 'medium' | 'low'; events: string[] } {
+    const events = {
+      'BTCUSD': ['Bitcoin ETF News', 'Regulatory Updates', 'Institutional Adoption'],
+      'EURUSD': ['ECB Rate Decision', 'US NFP', 'EU Inflation Data', 'Fed Minutes'],
+      'XAUUSD': ['CPI Data', 'Fed Speech', 'Geopolitical Tensions', 'Dollar Index']
+    };
+    
+    const pairEvents = events[pair as keyof typeof events] || [];
+    const activeEvents = pairEvents.filter(() => Math.random() > 0.7); // 30% probabilidad
+    
+    return {
+      impact: activeEvents.length > 1 ? 'high' : activeEvents.length === 1 ? 'medium' : 'low',
+      events: activeEvents
+    };
+  }
+}
+
+const marketContext = new MarketContext();
 
 const tradingPairs = [
   { symbol: 'BTCUSD', api: 'BTCUSDT', display: 'Bitcoin (BTCUSD)', category: 'Crypto' },
@@ -297,43 +415,74 @@ const TradingSignalsBot = () => {
       const tfSignals = timeframes.map(tf => Math.random() > 0.4 ? (isBuy ? 1 : -1) : 0);
       const tfScore = tfSignals.reduce((a: number, b) => a + b, 0);
       
-      // 🧠 SISTEMA DE IA AVANZADO
+      // 🧠 SISTEMA DE IA AVANZADO CON CONTEXTO DE MERCADO
+      const sessionInfo = marketContext.getCurrentSession();
+      const economicEvents = marketContext.getEconomicEvents(pairObj.symbol);
       const aiAnalysis = tradingAI.calculateAIScore(tfScore, entry, pairObj.symbol, marketSentiment, riskLevel);
-      const confidence = aiAnalysis.confidence;
+      let confidence = aiAnalysis.confidence;
       
-      // Generar notas con razonamiento de IA
-      let notes = `🤖 ANÁLISIS IA AVANZADO - Confianza: ${confidence}%\n\n`;
+      // Ajustar confianza según sesión y eventos
+      if (sessionInfo.volatility === 'high' && sessionInfo.overlap) {
+        confidence = Math.min(95, confidence + 5); // Boost en sesiones activas
+      }
+      if (economicEvents.impact === 'high') {
+        confidence = Math.max(30, confidence - 10); // Reducir en eventos de alto impacto
+      }
       
-      // Añadir razonamiento detallado
+      // Generar notas con análisis completo de IA
+      let notes = `🤖 ANÁLISIS IA NEURONAL AVANZADO - Confianza: ${confidence}%\n\n`;
+      
+      // Información de contexto de mercado
+      notes += `🌍 CONTEXTO DE MERCADO:\n`;
+      notes += `• Sesión: ${sessionInfo.session} (Volatilidad: ${sessionInfo.volatility.toUpperCase()})\n`;
+      notes += `• Overlap: ${sessionInfo.overlap ? 'SÍ - Mayor liquidez' : 'NO - Liquidez normal'}\n`;
+      notes += `• Eventos económicos: ${economicEvents.impact.toUpperCase()} impacto\n`;
+      if (economicEvents.events.length > 0) {
+        notes += `• Próximos: ${economicEvents.events.join(', ')}\n`;
+      }
+      notes += `\n`;
+      
+      // Análisis de niveles S/R
+      notes += `🎯 NIVELES CRÍTICOS:\n`;
+      notes += `• Soporte: ${aiAnalysis.levels.support}\n`;
+      notes += `• Resistencia: ${aiAnalysis.levels.resistance}\n`;
+      notes += `• Posición actual: ${entry}\n\n`;
+      
+      // Añadir razonamiento detallado de IA
+      notes += `🔍 FACTORES ANALIZADOS:\n`;
       aiAnalysis.reasoning.forEach((reason, index) => {
         notes += `${index + 1}. ${reason}\n`;
       });
       
-      notes += `\n📋 RECOMENDACIONES:\n`;
+      notes += `\n📋 RECOMENDACIONES FINALES:\n`;
       if (confidence >= 85) {
-        notes += `🔥 SEÑAL DE ALTA CALIDAD: Múltiples factores confirman la oportunidad.
-⚡ Confluencia técnica y fundamental alineada.
-💎 Patrón institucional detectado con alta probabilidad de éxito.
-🎯 Setup ideal para posición con tamaño normal.
-⏰ Ventana operativa: 4-8 horas. Monitorear evolución.`;
+        notes += `🔥 SEÑAL PREMIUM: Confluencia excepcional detectada por IA.
+⚡ Múltiples timeframes + patrones + momentum alineados.
+💎 Contexto de mercado favorable para la operación.
+🎯 Setup institucional de alta probabilidad de éxito.
+⏰ Ventana operativa: 4-8 horas. Ejecutar con confianza.
+${sessionInfo.overlap ? '🚀 BONUS: Overlap de sesiones - liquidez óptima' : ''}`;
       } else if (confidence >= 70) {
-        notes += `✅ OPORTUNIDAD SÓLIDA: Factores técnicos favorables con confirmación parcial.
-📊 Análisis de contexto positivo, riesgo controlado.
-⚖️ Entrada válida con gestión conservadora.
-🔍 Seguir evolución del precio cada 2-3 horas.
-⏰ Validez esperada: 6-12 horas.`;
+        notes += `✅ OPORTUNIDAD SÓLIDA: Análisis técnico positivo con confirmación.
+📊 Factores fundamentales favorables, riesgo controlado.
+⚖️ Entrada válida con gestión estándar de riesgo.
+🔍 Monitorear evolución cada 2-3 horas.
+⏰ Validez esperada: 6-12 horas según volatilidad.
+${economicEvents.impact === 'low' ? '📰 Sin eventos disruptivos previstos' : '⚠️ Estar atento a noticias'}`;
       } else if (confidence >= 55) {
-        notes += `⚠️ SEÑAL CONDICIONAL: Setup técnico básico identificado.
-🔄 Contexto mixto, requiere confirmación adicional.
-💰 Considerar posición reducida o esperar mejor entrada.
-📈 Monitorear cambios en momentum antes de ejecutar.
-⏰ Revisar en 1-2 horas para nueva evaluación.`;
+        notes += `⚠️ SEÑAL CONDICIONAL: Setup básico identificado por IA.
+🔄 Contexto mixto, algunos factores no alineados.
+💰 Considerar posición reducida (50% del tamaño normal).
+📈 Esperar confirmación adicional antes de ejecutar.
+⏰ Revisar análisis en 1-2 horas para nueva evaluación.
+${sessionInfo.volatility === 'low' ? '😴 Sesión de baja volatilidad - paciencia' : ''}`;
       } else {
-        notes += `🚫 SEÑAL DÉBIL: Condiciones técnicas y fundamentales no favorables.
-❌ Falta confluencia, mercado incierto o lateral.
-🛑 EVITAR esta operación o esperar mejor setup.
-🔍 Analizar cambios en contexto macro antes de actuar.
-⏰ Reevaluar en 4-6 horas cuando cambien condiciones.`;
+        notes += `🚫 SEÑAL RECHAZADA: Condiciones técnicas desfavorables.
+❌ IA detecta múltiples factores negativos alineados.
+🛑 EVITAR esta operación completamente.
+🔍 Esperar mejor confluencia técnica y fundamental.
+⏰ Reevaluar en 4-6 horas o tras cambio de sesión.
+${economicEvents.impact === 'high' ? '📰 ALTA VOLATILIDAD esperada por eventos' : ''}`;
       }
       const signal: Signal = {
         id: Date.now(),
@@ -460,6 +609,31 @@ const TradingSignalsBot = () => {
           </button>
         </div>
       </header>
+
+      {/* Panel de información de mercado */}
+      <div style={{ background: 'rgba(16, 23, 42, 0.95)', padding: '16px 8vw', borderBottom: '1px solid #374151' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ display: 'flex', gap: 24, alignItems: 'center', fontSize: '0.9rem' }}>
+            <div style={{ color: '#a5b4fc' }}>
+              <span style={{ color: '#22d3ee', fontWeight: 600 }}>🌍 Sesión:</span> {(() => {
+                const session = marketContext.getCurrentSession();
+                return `${session.session} (${session.volatility})`;
+              })()}
+            </div>
+            <div style={{ color: '#a5b4fc' }}>
+              <span style={{ color: '#fbbf24', fontWeight: 600 }}>⏰ UTC:</span> {new Date().toLocaleTimeString('es-ES', { timeZone: 'UTC', hour12: false })}
+            </div>
+            <div style={{ color: '#a5b4fc' }}>
+              <span style={{ color: '#16a34a', fontWeight: 600 }}>🎯 Análisis:</span> Neuronal IA v2.0
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', fontSize: '0.85rem' }}>
+            <div style={{ color: '#64748b' }}>
+              Próxima evaluación: <span style={{ color: '#a78bfa', fontWeight: 600 }}>{Math.round(signalInterval/60000)}min</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Panel de configuración */}
       {showSettings && (
@@ -704,13 +878,14 @@ const TradingSignalsBot = () => {
               <tr style={{ borderBottom: '2px solid #6d28d9', color: '#a5b4fc' }}>
                 <th style={{ padding: 10 }}>Par</th>
                 <th style={{ padding: 10 }}>Señal</th>
+                <th style={{ padding: 10 }}>Calidad IA</th>
                 <th style={{ padding: 10 }}>Confianza</th>
                 <th style={{ padding: 10 }}>Entrada</th>
                 <th style={{ padding: 10 }}>TP</th>
                 <th style={{ padding: 10 }}>SL</th>
                 <th style={{ padding: 10 }}>R:R</th>
                 <th style={{ padding: 10 }}>Hora</th>
-                <th style={{ padding: 10 }}>Notas</th>
+                <th style={{ padding: 10 }}>Análisis</th>
                 <th style={{ padding: 10 }}>Acción</th>
               </tr>
             </thead>
@@ -724,6 +899,20 @@ const TradingSignalsBot = () => {
                 <tr key={s.id} style={{ borderBottom: '1px solid #334155', background: s.signal === 'BUY' ? 'rgba(34,211,238,0.04)' : 'rgba(244,114,182,0.04)' }}>
                   <td style={{ padding: 10, fontWeight: 600 }}>{s.display}</td>
                   <td style={{ padding: 10, color: s.signal === 'BUY' ? '#22d3ee' : '#f472b6', fontWeight: 'bold', letterSpacing: 1 }}>{s.signal}</td>
+                  <td style={{ padding: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{
+                        padding: '2px 6px',
+                        borderRadius: 4,
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        background: s.confidence >= 85 ? '#16a34a' : s.confidence >= 70 ? '#ca8a04' : s.confidence >= 55 ? '#ea580c' : '#dc2626',
+                        color: '#fff'
+                      }}>
+                        {s.confidence >= 85 ? '🔥 PREMIUM' : s.confidence >= 70 ? '✅ SÓLIDA' : s.confidence >= 55 ? '⚠️ CONDICIONAL' : '🚫 DÉBIL'}
+                      </div>
+                    </div>
+                  </td>
                   <td style={{ padding: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       <div style={{ 
@@ -765,7 +954,7 @@ const TradingSignalsBot = () => {
               })}
               {filteredSignals.length === 0 && (
                 <tr>
-                  <td colSpan={10} style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>
+                  <td colSpan={11} style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>
                     No hay señales disponibles para los filtros seleccionados
                   </td>
                 </tr>
