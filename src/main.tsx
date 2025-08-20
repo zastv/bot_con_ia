@@ -1,11 +1,5 @@
-<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar
-} from 'recharts';
-import {
-  Brain, TrendingUp, TrendingDown, DollarSign, BarChart3, AlertTriangle, CheckCircle, Eye, Zap, Target, Settings, Bell, Database, Activity, Pause, Play, RotateCcw
-} from 'lucide-react';
+import { Brain } from 'lucide-react';
 
 const tradingPairs = ['XAUUSD', 'EURUSD', 'GBPUSD', 'BTCUSD'];
 
@@ -54,6 +48,8 @@ const TradingSignalsBot = () => {
         entry,
         tp,
         sl,
+        timestamp: new Date().toLocaleString(),
+        notes: confidence > 90 ? 'Alta probabilidad, seguir gestión de riesgo.' : confidence < 70 ? 'Señal débil, operar con precaución.' : 'Condiciones normales.',
       };
       setSignals(prev => [signal, ...prev.slice(0, 19)]);
       // Si no hay operación activa, la primera señal generada será la activa
