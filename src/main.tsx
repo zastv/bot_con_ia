@@ -81,6 +81,9 @@ const TradingSignalsBot = () => {
   const [filterCategory, setFilterCategory] = useState<string>('All');
   const [signalInterval, setSignalInterval] = useState(1800000); // 30 minutos en lugar de 7 segundos
   const [maxSignals, setMaxSignals] = useState(4); // Máximo 4 señales por día
+  const [lastPairIndex, setLastPairIndex] = useState(0); // Para rotación balanceada
+  const [marketSentiment, setMarketSentiment] = useState<'Bullish' | 'Bearish' | 'Neutral'>('Neutral');
+  const [riskLevel, setRiskLevel] = useState<'Conservative' | 'Moderate' | 'Aggressive'>('Moderate');
 
   // Generar señales realistas cada cierto tiempo
   useEffect(() => {
@@ -98,8 +101,17 @@ const TradingSignalsBot = () => {
         setLoading(false);
         return;
       }
-      const pairObj = availablePairs[Math.floor(Math.random() * availablePairs.length)];
-      const isBuy = Math.random() > 0.5;
+      
+      // Sistema de rotación balanceada para evitar sesgo hacia un solo par
+      const pairObj = availablePairs[lastPairIndex % availablePairs.length];
+      setLastPairIndex(prev => prev + 1);
+      
+      // Sentimiento de mercado influye en la probabilidad de BUY/SELL
+      let buyProbability = 0.5;
+      if (marketSentiment === 'Bullish') buyProbability = 0.65;
+      else if (marketSentiment === 'Bearish') buyProbability = 0.35;
+      
+      const isBuy = Math.random() < buyProbability;
       let entry = 0;
       try {
         entry = await fetchPrice(pairObj.api);
@@ -111,18 +123,27 @@ const TradingSignalsBot = () => {
         return;
       }
       let tp = 0, sl = 0;
+      // Multiplicadores según nivel de riesgo
+      const riskMultiplier = riskLevel === 'Conservative' ? 0.7 : riskLevel === 'Aggressive' ? 1.3 : 1.0;
+      
       if (pairObj.symbol === 'BTCUSD' || pairObj.symbol === 'ETHUSD') {
         // Para crypto: targets más amplios para intraday
-        tp = parseFloat((entry + (isBuy ? 800 : -800)).toFixed(0));
-        sl = parseFloat((entry - (isBuy ? 400 : -400)).toFixed(0));
+        const baseTP = 800 * riskMultiplier;
+        const baseSL = 400 * riskMultiplier;
+        tp = parseFloat((entry + (isBuy ? baseTP : -baseTP)).toFixed(0));
+        sl = parseFloat((entry - (isBuy ? baseSL : -baseSL)).toFixed(0));
       } else if (pairObj.symbol === 'XAUUSD') {
         // Para oro: targets intraday
-        tp = parseFloat((entry + (isBuy ? 15 : -15)).toFixed(2));
-        sl = parseFloat((entry - (isBuy ? 8 : -8)).toFixed(2));
+        const baseTP = 15 * riskMultiplier;
+        const baseSL = 8 * riskMultiplier;
+        tp = parseFloat((entry + (isBuy ? baseTP : -baseTP)).toFixed(2));
+        sl = parseFloat((entry - (isBuy ? baseSL : -baseSL)).toFixed(2));
       } else {
         // Para forex: targets intraday más amplios
-        tp = parseFloat((entry + (isBuy ? 0.008 : -0.008)).toFixed(5));
-        sl = parseFloat((entry - (isBuy ? 0.004 : -0.004)).toFixed(5));
+        const baseTP = 0.008 * riskMultiplier;
+        const baseSL = 0.004 * riskMultiplier;
+        tp = parseFloat((entry + (isBuy ? baseTP : -baseTP)).toFixed(5));
+        sl = parseFloat((entry - (isBuy ? baseSL : -baseSL)).toFixed(5));
       }
       // Simular mayor probabilidad si varias temporalidades coinciden
       const tfSignals = timeframes.map(tf => Math.random() > 0.4 ? (isBuy ? 1 : -1) : 0);
@@ -318,6 +339,54 @@ Entrada con gestión conservadora, monitorear evolución cada 2-3 horas.`;
             </div>
           </div>
 
+          {/* Análisis de Mercado */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ color: '#e0e7ff', fontSize: '1rem', marginBottom: 8, display: 'block' }}>Sentimiento de Mercado:</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {['Bullish', 'Neutral', 'Bearish'].map(sentiment => (
+                <button
+                  key={sentiment}
+                  onClick={() => setMarketSentiment(sentiment as any)}
+                  style={{
+                    background: marketSentiment === sentiment ? '#16a34a' : 'rgba(107, 114, 128, 0.3)',
+                    color: marketSentiment === sentiment ? '#fff' : '#a5b4fc',
+                    border: '1px solid #6d28d9',
+                    borderRadius: 8,
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  {sentiment === 'Bullish' ? '📈 Alcista' : sentiment === 'Bearish' ? '📉 Bajista' : '⚖️ Neutral'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Nivel de Riesgo */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ color: '#e0e7ff', fontSize: '1rem', marginBottom: 8, display: 'block' }}>Nivel de Riesgo:</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {['Conservative', 'Moderate', 'Aggressive'].map(risk => (
+                <button
+                  key={risk}
+                  onClick={() => setRiskLevel(risk as any)}
+                  style={{
+                    background: riskLevel === risk ? '#dc2626' : 'rgba(107, 114, 128, 0.3)',
+                    color: riskLevel === risk ? '#fff' : '#a5b4fc',
+                    border: '1px solid #6d28d9',
+                    borderRadius: 8,
+                    padding: '8px 16px',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  {risk === 'Conservative' ? '🛡️ Conservador' : risk === 'Aggressive' ? '⚡ Agresivo' : '⚖️ Moderado'}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Configuración de intervalo */}
           <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
             <div>
@@ -383,6 +452,19 @@ Entrada con gestión conservadora, monitorear evolución cada 2-3 horas.`;
           <h2 style={{ color: '#38bdf8', fontSize: '1.2rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
             <TrendingUp size={20} /> Operación en curso
           </h2>
+          
+          {/* Estadísticas rápidas */}
+          <div style={{ background: '#181e2a', borderRadius: 12, padding: 12, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, fontSize: '0.85rem' }}>
+            <div style={{ color: '#a5b4fc' }}>Señales hoy: <span style={{ color: '#22d3ee', fontWeight: 600 }}>{signals.length}/4</span></div>
+            <div style={{ color: '#a5b4fc' }}>Mercado: <span style={{ color: marketSentiment === 'Bullish' ? '#16a34a' : marketSentiment === 'Bearish' ? '#dc2626' : '#fbbf24', fontWeight: 600 }}>
+              {marketSentiment === 'Bullish' ? '📈 Alcista' : marketSentiment === 'Bearish' ? '📉 Bajista' : '⚖️ Neutral'}
+            </span></div>
+            <div style={{ color: '#a5b4fc' }}>Riesgo: <span style={{ color: riskLevel === 'Conservative' ? '#16a34a' : riskLevel === 'Aggressive' ? '#dc2626' : '#fbbf24', fontWeight: 600 }}>
+              {riskLevel === 'Conservative' ? '🛡️ Bajo' : riskLevel === 'Aggressive' ? '⚡ Alto' : '⚖️ Medio'}
+            </span></div>
+            <div style={{ color: '#a5b4fc' }}>Próxima: <span style={{ color: '#38bdf8', fontWeight: 600 }}>{Math.round(signalInterval/60000)}min</span></div>
+          </div>
+
           {activeTrade ? (
             <div style={{ background: '#181e2a', borderRadius: 12, padding: 18, boxShadow: '0 2px 8px #0002' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
@@ -450,13 +532,19 @@ Entrada con gestión conservadora, monitorear evolución cada 2-3 horas.`;
                 <th style={{ padding: 10 }}>Entrada</th>
                 <th style={{ padding: 10 }}>TP</th>
                 <th style={{ padding: 10 }}>SL</th>
+                <th style={{ padding: 10 }}>R:R</th>
                 <th style={{ padding: 10 }}>Hora</th>
                 <th style={{ padding: 10 }}>Notas</th>
                 <th style={{ padding: 10 }}>Acción</th>
               </tr>
             </thead>
             <tbody>
-              {filteredSignals.map(s => (
+              {filteredSignals.map(s => {
+                const risk = Math.abs(s.entry - s.sl);
+                const reward = Math.abs(s.tp - s.entry);
+                const riskReward = risk > 0 ? (reward / risk).toFixed(1) : '0';
+                
+                return (
                 <tr key={s.id} style={{ borderBottom: '1px solid #334155', background: s.signal === 'BUY' ? 'rgba(34,211,238,0.04)' : 'rgba(244,114,182,0.04)' }}>
                   <td style={{ padding: 10, fontWeight: 600 }}>{s.display}</td>
                   <td style={{ padding: 10, color: s.signal === 'BUY' ? '#22d3ee' : '#f472b6', fontWeight: 'bold', letterSpacing: 1 }}>{s.signal}</td>
@@ -482,6 +570,9 @@ Entrada con gestión conservadora, monitorear evolución cada 2-3 horas.`;
                   <td style={{ padding: 10 }}>{s.entry}</td>
                   <td style={{ padding: 10, color: '#16e0b3' }}>{s.tp}</td>
                   <td style={{ padding: 10, color: '#f472b6' }}>{s.sl}</td>
+                  <td style={{ padding: 10, color: parseFloat(riskReward) >= 2 ? '#16e0b3' : parseFloat(riskReward) >= 1.5 ? '#fbbf24' : '#f472b6', fontWeight: 600 }}>
+                    1:{riskReward}
+                  </td>
                   <td style={{ padding: 10 }}>{s.timestamp}</td>
                   <td style={{ padding: 10, color: '#fbbf24', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.notes}</td>
                   <td style={{ padding: 10 }}>
@@ -494,10 +585,11 @@ Entrada con gestión conservadora, monitorear evolución cada 2-3 horas.`;
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {filteredSignals.length === 0 && (
                 <tr>
-                  <td colSpan={9} style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>
+                  <td colSpan={10} style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>
                     No hay señales disponibles para los filtros seleccionados
                   </td>
                 </tr>
