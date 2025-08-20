@@ -1,5 +1,5 @@
 import React from 'react';
-import TradingSignalsBot from './main';
+import TradingSignalsBot from './TradingSignalsBot';
 import './index.css';
 
 function App() {
