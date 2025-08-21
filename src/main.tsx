@@ -383,7 +383,7 @@ const TradingSignalsBot = () => {
   const [selectedPairs, setSelectedPairs] = useState<string[]>(['BTCUSD', 'EURUSD', 'XAUUSD', 'GBPUSD', 'ETHUSD', 'AUDUSD']);
   const [showSettings, setShowSettings] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('All');
-  const [signalInterval, setSignalInterval] = useState(1800000); // 30 minutos en lugar de 7 segundos
+  const [signalInterval, setSignalInterval] = useState(15000); // 15 segundos para pruebas (antes 30 minutos)
   const [maxSignals, setMaxSignals] = useState(4); // Máximo 4 señales por día
   const [lastPairIndex, setLastPairIndex] = useState(0); // Para rotación balanceada
   const [marketSentiment, setMarketSentiment] = useState<'Bullish' | 'Bearish' | 'Neutral'>('Neutral');
@@ -393,10 +393,10 @@ const TradingSignalsBot = () => {
   useEffect(() => {
     if (!running) return;
     let cancelled = false;
-    let signalsCount = 0;
     
     const interval = setInterval(async () => {
-      if (signalsCount >= maxSignals) return;
+      if (cancelled) return;
+      
       setLoading(true);
       setError(null);
       
@@ -424,15 +424,21 @@ const TradingSignalsBot = () => {
       
       try {
         entry = await fetchPrice(pairObj.api);
-      } catch {
+        console.log(`🔄 Generando señal para ${pairObj.symbol} - Precio: ${entry}`);
+      } catch (error) {
+        console.error(`❌ Error obteniendo precio para ${pairObj.symbol}:`, error);
         setError(`Error obteniendo precio para ${pairObj.symbol}.`);
       }
       
       // Validar que el precio es válido (no 0 o NaN)
       if (!entry || isNaN(entry) || entry <= 0) {
-        console.warn(`Precio inválido para ${pairObj.symbol}: ${entry}`);
-        setLoading(false);
-        return;
+        console.warn(`⚠️ Precio inválido para ${pairObj.symbol}: ${entry}`);
+        // En lugar de fallar, usar precio simulado como fallback
+        entry = await fetchPrice(pairObj.api); // Intentar de nuevo con fallback automático
+        if (!entry || isNaN(entry) || entry <= 0) {
+          setLoading(false);
+          return;
+        }
       }
       let tp = 0, sl = 0;
       // Multiplicadores según nivel de riesgo
@@ -494,17 +500,22 @@ const TradingSignalsBot = () => {
       const tfScore = tfSignals.reduce((a: number, b) => a + b, 0);
       
       // 🧠 SISTEMA DE IA AVANZADO CON CONTEXTO DE MERCADO
+      console.log(`🧠 Ejecutando análisis IA para ${pairObj.symbol}...`);
       const sessionInfo = marketContext.getCurrentSession();
       const economicEvents = marketContext.getEconomicEvents(pairObj.symbol);
       const aiAnalysis = tradingAI.calculateAIScore(tfScore, entry, pairObj.symbol, marketSentiment, riskLevel);
       let confidence = aiAnalysis.confidence;
       
+      console.log(`📊 Análisis completado - Confianza inicial: ${confidence}%`);
+      
       // Ajustar confianza según sesión y eventos
       if (sessionInfo.volatility === 'high' && sessionInfo.overlap) {
         confidence = Math.min(95, confidence + 5); // Boost en sesiones activas
+        console.log(`📈 Boost por sesión activa: +5% -> ${confidence}%`);
       }
       if (economicEvents.impact === 'high') {
         confidence = Math.max(30, confidence - 10); // Reducir en eventos de alto impacto
+        console.log(`📉 Reducción por eventos de alto impacto: -10% -> ${confidence}%`);
       }
       
       // Generar notas con análisis completo de IA
@@ -575,10 +586,11 @@ ${economicEvents.impact === 'high' ? '📰 ALTA VOLATILIDAD esperada por eventos
         notes,
       };
       if (!cancelled) {
+        console.log(`✅ Señal generada para ${pairObj.symbol} - ${isBuy ? 'BUY' : 'SELL'} - Confianza: ${confidence}%`);
         setSignals(prev => {
-          if (prev.length >= maxSignals) return prev;
-          signalsCount = prev.length + 1;
-          return [signal, ...prev];
+          const newSignals = [signal, ...prev];
+          // Mantener solo las últimas maxSignals señales
+          return newSignals.slice(0, maxSignals);
         });
         setActiveTrade(prev => prev || signal);
         setLoading(false);
@@ -591,9 +603,14 @@ ${economicEvents.impact === 'high' ? '📰 ALTA VOLATILIDAD esperada por eventos
   }, [running, selectedPairs, signalInterval, maxSignals]);  // Botón para iniciar/parar
   const handleToggle = () => {
     if (running) {
+      console.log('🛑 Deteniendo bot...');
       setRunning(false);
       setActiveTrade(null);
     } else {
+      console.log('🚀 Iniciando bot de señales...');
+      console.log(`📊 Pares seleccionados: ${selectedPairs.join(', ')}`);
+      console.log(`⏱️ Intervalo: ${signalInterval/1000} segundos`);
+      console.log(`📈 Máx señales: ${maxSignals}`);
       setSignals([]);
       setActiveTrade(null);
       setRunning(true);
@@ -821,11 +838,11 @@ ${economicEvents.impact === 'high' ? '📰 ALTA VOLATILIDAD esperada por eventos
               <label style={{ color: '#e0e7ff', fontSize: '1rem', marginBottom: 8, display: 'block' }}>Intervalo (minutos):</label>
               <input
                 type="number"
-                value={signalInterval / 60000} // Convertir de ms a minutos
-                onChange={(e) => setSignalInterval(Number(e.target.value) * 60000)} // Convertir de minutos a ms
-                min="15"
+                value={Math.max(0.25, signalInterval / 60000)} // Convertir de ms a minutos, mínimo 0.25 (15 seg)
+                onChange={(e) => setSignalInterval(Math.max(15000, Number(e.target.value) * 60000))} // Convertir de minutos a ms, mínimo 15 seg
+                min="0.25"
                 max="120"
-                step="15"
+                step="0.25"
                 style={{
                   background: 'rgba(107, 114, 128, 0.3)',
                   color: '#e0e7ff',
