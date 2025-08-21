@@ -75,20 +75,20 @@ const fetchPrice = async (pair: string): Promise<number> => {
 
 const TradingSignalsBot: React.FC = () => {
   const [signals, setSignals] = useState<Signal[]>([]);
-  const [running, setRunning] = useState<boolean>(false);
+  const [running, setRunning] = useState(false);
   const [activeTrade, setActiveTrade] = useState<Signal | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPairs, setSelectedPairs] = useState<string[]>(['BTCUSD', 'EURUSD', 'XAUUSD', 'GBPUSD']);
-  const [showSettings, setShowSettings] = useState<boolean>(false);
-  const [filterCategory, setFilterCategory] = useState<string>('All');
-  const [signalInterval, setSignalInterval] = useState<number>(10000); // 10 segundos para pruebas
-  const [maxSignals, setMaxSignals] = useState<number>(6);
+  const [selectedPairs, setSelectedPairs] = useState(['BTCUSD', 'EURUSD', 'XAUUSD', 'GBPUSD']);
+  const [showSettings, setShowSettings] = useState(false);
+  const [filterCategory, setFilterCategory] = useState('All');
+  const [signalInterval, setSignalInterval] = useState(10000); // 10 segundos para pruebas
+  const [maxSignals, setMaxSignals] = useState(6);
   const [marketSentiment, setMarketSentiment] = useState<'Bullish' | 'Bearish' | 'Neutral'>('Neutral');
   const [riskLevel, setRiskLevel] = useState<'Conservative' | 'Moderate' | 'Aggressive'>('Moderate');
 
   // Función para generar señales
-  const generateSignal = async (): Promise<void> => {
+  const generateSignal = async () => {
     console.log('🔄 Generando nueva señal...');
     
     if (signals.length >= maxSignals) {
@@ -210,7 +210,7 @@ const TradingSignalsBot: React.FC = () => {
   }, [running, selectedPairs, signalInterval, maxSignals, marketSentiment, riskLevel]);
 
   // Funciones de control
-  const handleToggle = (): void => {
+  const handleToggle = () => {
     if (running) {
       setRunning(false);
       setActiveTrade(null);
@@ -221,11 +221,11 @@ const TradingSignalsBot: React.FC = () => {
     }
   };
 
-  const handleSetActive = (signal: Signal): void => {
+  const handleSetActive = (signal: Signal) => {
     setActiveTrade(signal);
   };
 
-  const togglePairSelection = (symbol: string): void => {
+  const togglePairSelection = (symbol: string) => {
     setSelectedPairs(prev => 
       prev.includes(symbol) 
         ? prev.filter(s => s !== symbol)
