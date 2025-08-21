@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Brain, Play, Pause, TrendingUp, TrendingDown, RefreshCw, Settings, Filter, BarChart3, Zap } from 'lucide-react';
 
@@ -75,20 +75,20 @@ const fetchPrice = async (pair: string): Promise<number> => {
 
 const TradingSignalsBot: React.FC = () => {
   const [signals, setSignals] = useState<Signal[]>([]);
-  const [running, setRunning] = useState(false);
+  const [running, setRunning] = useState<boolean>(false);
   const [activeTrade, setActiveTrade] = useState<Signal | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPairs, setSelectedPairs] = useState(['BTCUSD', 'EURUSD', 'XAUUSD', 'GBPUSD']);
-  const [showSettings, setShowSettings] = useState(false);
-  const [filterCategory, setFilterCategory] = useState('All');
-  const [signalInterval, setSignalInterval] = useState(10000); // 10 segundos para pruebas
-  const [maxSignals, setMaxSignals] = useState(6);
+  const [selectedPairs, setSelectedPairs] = useState<string[]>(['BTCUSD', 'EURUSD', 'XAUUSD', 'GBPUSD']);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [filterCategory, setFilterCategory] = useState<string>('All');
+  const [signalInterval, setSignalInterval] = useState<number>(10000); // 10 segundos para pruebas
+  const [maxSignals, setMaxSignals] = useState<number>(6);
   const [marketSentiment, setMarketSentiment] = useState<'Bullish' | 'Bearish' | 'Neutral'>('Neutral');
   const [riskLevel, setRiskLevel] = useState<'Conservative' | 'Moderate' | 'Aggressive'>('Moderate');
 
   // Función para generar señales
-  const generateSignal = async () => {
+  const generateSignal = useCallback(async () => {
     console.log('🔄 Generando nueva señal...');
     
     if (signals.length >= maxSignals) {
@@ -194,23 +194,40 @@ const TradingSignalsBot: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [signals.length, maxSignals, selectedPairs, marketSentiment, riskLevel, activeTrade]);
 
   // useEffect para el generador de señales
   useEffect(() => {
     if (!running) return;
 
+    let interval: NodeJS.Timeout;
+
     // Generar primera señal inmediatamente
     generateSignal();
 
     // Configurar intervalo
-    const interval = setInterval(generateSignal, signalInterval);
+    interval = setInterval(() => {
+      generateSignal();
+    }, signalInterval);
 
-    return () => clearInterval(interval);
-  }, [running, selectedPairs, signalInterval, maxSignals, marketSentiment, riskLevel]);
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [running, signalInterval]);
+
+  // Cleanup al desmontar componente
+  useEffect(() => {
+    return () => {
+      setRunning(false);
+      setSignals([]);
+      setActiveTrade(null);
+    };
+  }, []);
 
   // Funciones de control
-  const handleToggle = () => {
+  const handleToggle = (): void => {
     if (running) {
       setRunning(false);
       setActiveTrade(null);
@@ -221,11 +238,11 @@ const TradingSignalsBot: React.FC = () => {
     }
   };
 
-  const handleSetActive = (signal: Signal) => {
+  const handleSetActive = (signal: Signal): void => {
     setActiveTrade(signal);
   };
 
-  const togglePairSelection = (symbol: string) => {
+  const togglePairSelection = (symbol: string): void => {
     setSelectedPairs(prev => 
       prev.includes(symbol) 
         ? prev.filter(s => s !== symbol)
@@ -233,13 +250,13 @@ const TradingSignalsBot: React.FC = () => {
     );
   };
 
-  const filteredPairs = filterCategory === 'All' 
+  const filteredPairs: TradingPair[] = filterCategory === 'All' 
     ? tradingPairs 
     : tradingPairs.filter(p => p.category === filterCategory);
 
-  const categories = ['All', ...Array.from(new Set(tradingPairs.map(p => p.category)))];
+  const categories: string[] = ['All', ...Array.from(new Set(tradingPairs.map(p => p.category)))];
 
-  const filteredSignals = signals.filter(s => 
+  const filteredSignals: Signal[] = signals.filter(s => 
     filterCategory === 'All' || 
     tradingPairs.find(p => p.symbol === s.pair)?.category === filterCategory
   );
@@ -368,7 +385,7 @@ const TradingSignalsBot: React.FC = () => {
               <input
                 type="number"
                 value={signalInterval / 1000}
-                onChange={(e) => setSignalInterval(Number(e.target.value) * 1000)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSignalInterval(Number(e.target.value) * 1000)}
                 min="5"
                 max="300"
                 step="5"
@@ -387,7 +404,7 @@ const TradingSignalsBot: React.FC = () => {
               <input
                 type="number"
                 value={maxSignals}
-                onChange={(e) => setMaxSignals(Number(e.target.value))}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMaxSignals(Number(e.target.value))}
                 min="2"
                 max="10"
                 style={{
@@ -613,7 +630,7 @@ const TradingSignalsBot: React.FC = () => {
                 {/* Botones de acción */}
                 <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
                   <button
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                       e.stopPropagation();
                       const copyText = `${signal.display}\n${signal.signal} ${signal.entry}\nTP: ${signal.tp}\nSL: ${signal.sl}\nConfianza: ${signal.confidence}%\nR:R 1:${riskReward}`;
                       navigator.clipboard.writeText(copyText);
@@ -634,7 +651,7 @@ const TradingSignalsBot: React.FC = () => {
                   </button>
                   
                   <button
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                       e.stopPropagation();
                       handleSetActive(signal);
                     }}
