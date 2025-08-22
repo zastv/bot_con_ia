@@ -13,11 +13,12 @@ const TradingSignalsBot = () => {
   const [activeTrade, setActiveTrade] = useState<Signal | null>(null);
   const [selectedPairs, setSelectedPairs] = useState<string[]>(['EURUSD', 'BTCUSD', 'XAUUSD']);
   const [showSettings, setShowSettings] = useState(false);
-  const [filterCategory, setFilterCategory] = useState<string>('All');
+  // Categorías deshabilitadas por solicitud: siempre 'All'
+  const filterCategory = 'All';
   const [signalInterval, setSignalInterval] = useState(7000);
   const [maxSignals, setMaxSignals] = useState(8);
 
-  const { signals, loading, error, clearSignals } = useSignalGeneration(
+  const { signals, loading, error, clearSignals, batchMeta } = useSignalGeneration(
     running,
     selectedPairs,
     signalInterval,
@@ -75,15 +76,12 @@ const TradingSignalsBot = () => {
 
       <SettingsPanel
         showSettings={showSettings}
-        filterCategory={filterCategory}
-        setFilterCategory={setFilterCategory}
         selectedPairs={selectedPairs}
         togglePairSelection={togglePairSelection}
         signalInterval={signalInterval}
         setSignalInterval={setSignalInterval}
         maxSignals={maxSignals}
         setMaxSignals={setMaxSignals}
-        categories={categories}
         filteredPairs={filteredPairs}
       />
 
@@ -99,11 +97,12 @@ const TradingSignalsBot = () => {
       </main>
 
       <SignalsTable
-        filteredSignals={filteredSignals}
-        filterCategory={filterCategory}
-        setFilterCategory={setFilterCategory}
-        categories={categories}
+        filteredSignals={filteredSignals.slice(0, 1)}
+        filterCategory={'All'}
+        setFilterCategory={() => {}}
+        categories={['All']}
         onSetActive={handleSetActive}
+        batchMeta={batchMeta}
       />
 
       <style>{`

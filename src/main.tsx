@@ -523,6 +523,13 @@ const TradingSignalsBot: React.FC = () => {
   const [riskLevel, setRiskLevel] = useState<'Conservative' | 'Moderate' | 'Aggressive'>('Moderate');
   const [usedPairs, setUsedPairs] = useState<string[]>([]); // Control de pares ya utilizados
   const [lastAnalysisTime, setLastAnalysisTime] = useState<number>(0); // Control de tiempo entre análisis
+  
+  // 🎯 SISTEMA DE LOTES PROFESIONAL - 2 operaciones cada 30 minutos
+  const [activeBatch, setActiveBatch] = useState<Signal[]>([]);
+  const [batchStartTime, setBatchStartTime] = useState<number>(0);
+  const [batchCount, setBatchCount] = useState(0);
+  const [waitingForNextBatch, setWaitingForNextBatch] = useState(false);
+  const [nextBatchTime, setNextBatchTime] = useState<number>(0);
   const [emaHistory, setEmaHistory] = useState<Record<string, any>>({}); // Historial EMAs para cruces
 
   // Estado FTMO Challenge
@@ -940,8 +947,12 @@ const TradingSignalsBot: React.FC = () => {
       // 📍 MARCAR EN GRÁFICO - Actualizar TradingView con la nueva operación
       setActiveTrade(newSignal); // Esto cambiará automáticamente el gráfico al par de la señal
 
-      // Reemplazar señal anterior (solo UNA operación activa)
-      setSignals([newSignal]);
+      // 🎯 SISTEMA DE LOTES - Solo mostrar operación actual, no historial
+      setSignals([newSignal]); // Solo UNA operación visible
+      setActiveTrade(newSignal); // Operación activa para el gráfico
+      
+      // Añadir al lote actual
+      setActiveBatch(prev => [...prev, newSignal]);
 
     } catch (error) {
       console.error('❌ Error en análisis EMA:', error);
@@ -951,35 +962,38 @@ const TradingSignalsBot: React.FC = () => {
     }
   }, [signals.length, selectedPairs, marketSentiment, riskLevel, usedPairs, lastAnalysisTime, emaHistory]);
 
-  // useEffect para el analizador inteligente CON CONTROL ANTI-REPETICIÓN
+  // 🎯 SISTEMA DE LOTES - useEffect con control de lotes cada 30 minutos
   useEffect(() => {
     if (!running) return;
 
     let interval: NodeJS.Timeout;
 
-    // Generar primera señal después de 5 segundos (tiempo para cargar)
+    // Generar primer lote después de 5 segundos
     setTimeout(() => {
       if (running) generateSignal();
     }, 5000);
 
-    // ⚠️ INTERVALO MÁS LARGO PARA EVITAR REPETICIONES (mínimo 5 minutos)
-    const minInterval = Math.max(signalInterval, 300000); // Mínimo 5 minutos
-    
+    // 🕒 LOTES CADA 30 MINUTOS (o cuando se complete el lote actual)
     interval = setInterval(() => {
-      // Solo generar si no hay señales activas
-      if (signals.length === 0) {
+      const now = Date.now();
+      const timeSinceLastBatch = now - batchStartTime;
+      const BATCH_INTERVAL = 30 * 60 * 1000; // 30 minutos
+      
+      // Solo generar si es momento de nuevo lote O si el lote actual no está completo
+      if (timeSinceLastBatch >= BATCH_INTERVAL || activeBatch.length < 2) {
         generateSignal();
       } else {
-        console.log('⏳ Operación activa en curso - saltando análisis');
+        const remainingMinutes = Math.ceil((BATCH_INTERVAL - timeSinceLastBatch) / 1000 / 60);
+        console.log(`⏳ Esperando ${remainingMinutes} minutos para próximo lote`);
       }
-    }, minInterval);
+    }, 10000); // Revisar cada 10 segundos
 
     return () => {
       if (interval) {
         clearInterval(interval);
       }
     };
-  }, [running, signalInterval, signals.length]);
+  }, [running, generateSignal, activeBatch, batchStartTime]);
 
   // ⚠️ Auto-limpiar señales después de 30 minutos para evitar acumulación
   useEffect(() => {
@@ -1284,6 +1298,134 @@ const TradingSignalsBot: React.FC = () => {
         </div>
       </section>
 
+      {/* 🎯 Panel de Sistema de Lotes */}
+      <section style={{ 
+        maxWidth: 1200, 
+        margin: '20px auto', 
+        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(67, 56, 202, 0.95) 100%)',
+        borderRadius: 18, 
+        padding: 24, 
+        boxShadow: '0 4px 32px rgba(99, 102, 241, 0.1)',
+        border: '2px solid rgba(99, 102, 241, 0.3)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h2 style={{ 
+            color: '#6366f1', 
+            fontSize: '1.3rem', 
+            fontWeight: 700, 
+            margin: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}>
+            🎯 Sistema de Lotes Inteligente
+          </h2>
+          <div style={{
+            background: activeBatch.length === 2 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(99, 102, 241, 0.2)',
+            color: activeBatch.length === 2 ? '#10b981' : '#6366f1',
+            padding: '6px 16px',
+            borderRadius: 20,
+            fontSize: '0.85rem',
+            fontWeight: 600
+          }}>
+            {activeBatch.length === 2 ? '✅ LOTE COMPLETO' : '🔄 GENERANDO LOTE'}
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+          {/* Lote Actual */}
+          <div style={{ 
+            background: 'rgba(0,0,0,0.3)', 
+            padding: 16, 
+            borderRadius: 12,
+            border: '1px solid rgba(99, 102, 241, 0.2)'
+          }}>
+            <div style={{ color: '#a5b4fc', fontSize: '0.8rem', marginBottom: 4 }}>LOTE ACTUAL</div>
+            <div style={{ color: '#6366f1', fontSize: '1.5rem', fontWeight: 700 }}>
+              #{batchCount}
+            </div>
+            <div style={{ color: '#64748b', fontSize: '0.75rem' }}>
+              {activeBatch.length}/2 operaciones
+            </div>
+          </div>
+
+          {/* Tiempo Próximo Lote */}
+          <div style={{ 
+            background: 'rgba(0,0,0,0.3)', 
+            padding: 16, 
+            borderRadius: 12,
+            border: '1px solid rgba(251, 191, 36, 0.2)'
+          }}>
+            <div style={{ color: '#a5b4fc', fontSize: '0.8rem', marginBottom: 4 }}>PRÓXIMO LOTE</div>
+            <div style={{ color: '#fbbf24', fontSize: '1.3rem', fontWeight: 700 }}>
+              {waitingForNextBatch 
+                ? `${Math.ceil((nextBatchTime - Date.now()) / 1000 / 60)} min`
+                : 'Activo'
+              }
+            </div>
+            <div style={{ color: '#64748b', fontSize: '0.75rem' }}>
+              Sistema 30 min
+            </div>
+          </div>
+
+          {/* Estado del Sistema */}
+          <div style={{ 
+            background: 'rgba(0,0,0,0.3)', 
+            padding: 16, 
+            borderRadius: 12,
+            border: '1px solid rgba(34, 211, 238, 0.2)'
+          }}>
+            <div style={{ color: '#a5b4fc', fontSize: '0.8rem', marginBottom: 4 }}>ESTADO</div>
+            <div style={{ color: '#22d3ee', fontSize: '1.3rem', fontWeight: 700 }}>
+              {running ? (loading ? 'Analizando' : 'Activo') : 'Detenido'}
+            </div>
+            <div style={{ color: '#64748b', fontSize: '0.75rem' }}>
+              {running ? 'Bot funcionando' : 'Bot pausado'}
+            </div>
+          </div>
+
+          {/* Calidad de Señales */}
+          <div style={{ 
+            background: 'rgba(0,0,0,0.3)', 
+            padding: 16, 
+            borderRadius: 12,
+            border: '1px solid rgba(167, 139, 250, 0.2)'
+          }}>
+            <div style={{ color: '#a5b4fc', fontSize: '0.8rem', marginBottom: 4 }}>CALIDAD</div>
+            <div style={{ color: '#a78bfa', fontSize: '1.3rem', fontWeight: 700 }}>
+              85+ Score
+            </div>
+            <div style={{ color: '#64748b', fontSize: '0.75rem' }}>
+              Solo premium
+            </div>
+          </div>
+        </div>
+
+        {/* Barra de progreso del lote */}
+        <div style={{ marginTop: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ color: '#a5b4fc', fontSize: '0.9rem' }}>Progreso del lote actual</span>
+            <span style={{ color: '#6366f1', fontSize: '0.9rem', fontWeight: 600 }}>
+              {Math.round((activeBatch.length / 2) * 100)}%
+            </span>
+          </div>
+          <div style={{ 
+            background: 'rgba(0,0,0,0.5)', 
+            height: 8, 
+            borderRadius: 4,
+            overflow: 'hidden'
+          }}>
+            <div style={{ 
+              background: 'linear-gradient(90deg, #6366f1, #22d3ee)',
+              height: '100%',
+              width: `${(activeBatch.length / 2) * 100}%`,
+              borderRadius: 4,
+              transition: 'width 0.3s ease'
+            }} />
+          </div>
+        </div>
+      </section>
+
       {/* Configuración */}
       {showSettings && (
         <div style={{ background: 'rgba(30, 27, 75, 0.98)', padding: '24px 8vw', borderBottom: '1px solid #6d28d9' }}>
@@ -1506,13 +1648,50 @@ const TradingSignalsBot: React.FC = () => {
         </section>
       </main>
 
-      {/* Panel de señales */}
+      {/* Panel de operación actual */}
       <section style={{ margin: '40px auto 0', maxWidth: 1200, background: 'rgba(30, 27, 75, 0.98)', borderRadius: 18, boxShadow: '0 2px 16px #0002', padding: 32 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <h2 style={{ color: '#a78bfa', fontSize: '1.5rem', fontWeight: 700, letterSpacing: 1, margin: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
             <Zap style={{ color: '#22d3ee' }} />
-            Señales IA Premium ({filteredSignals.length})
+            🎯 Operación Activa - Lote #{batchCount}
+            {waitingForNextBatch && (
+              <span style={{ 
+                background: 'linear-gradient(135deg, #f59e0b, #d97706)', 
+                color: 'white', 
+                padding: '4px 12px', 
+                borderRadius: 12, 
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+              }}>
+                ⏳ Próximo lote en {Math.ceil((nextBatchTime - Date.now()) / 1000 / 60)} min
+              </span>
+            )}
           </h2>
+          
+          {/* Información del sistema de lotes */}
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div style={{ 
+              background: 'rgba(34, 211, 238, 0.1)', 
+              border: '1px solid rgba(34, 211, 238, 0.3)',
+              borderRadius: 12, 
+              padding: '8px 16px',
+              fontSize: '0.9rem',
+              color: '#22d3ee'
+            }}>
+              📊 {activeBatch.length}/2 en lote actual
+            </div>
+            <div style={{ 
+              background: 'rgba(167, 139, 250, 0.1)', 
+              border: '1px solid rgba(167, 139, 250, 0.3)',
+              borderRadius: 12, 
+              padding: '8px 16px',
+              fontSize: '0.9rem',
+              color: '#a78bfa'
+            }}>
+              🕒 Sistema: 2 operaciones/30min
+            </div>
+          </div>
         </div>
 
         {/* Cards de señales */}

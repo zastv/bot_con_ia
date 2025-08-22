@@ -4,29 +4,23 @@ import { TradingPair } from '../../types';
 
 interface SettingsPanelProps {
   showSettings: boolean;
-  filterCategory: string;
-  setFilterCategory: (category: string) => void;
   selectedPairs: string[];
   togglePairSelection: (symbol: string) => void;
   signalInterval: number;
   setSignalInterval: (interval: number) => void;
   maxSignals: number;
   setMaxSignals: (max: number) => void;
-  categories: string[];
   filteredPairs: TradingPair[];
 }
 
 const SettingsPanel: React.FC<SettingsPanelProps> = ({
   showSettings,
-  filterCategory,
-  setFilterCategory,
   selectedPairs,
   togglePairSelection,
   signalInterval,
   setSignalInterval,
   maxSignals,
   setMaxSignals,
-  categories,
   filteredPairs,
 }) => {
   if (!showSettings) return null;
@@ -35,29 +29,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     <div style={{ background: 'rgba(30, 27, 75, 0.98)', padding: '24px 8vw', borderBottom: '1px solid #6d28d9' }}>
       <h3 style={{ color: '#a78bfa', fontSize: '1.2rem', marginBottom: 16, fontWeight: 700 }}>Configuración</h3>
       
-      {/* Selección de categorías */}
-      <div style={{ marginBottom: 20 }}>
-        <label style={{ color: '#e0e7ff', fontSize: '1rem', marginBottom: 8, display: 'block' }}>Filtrar por categoría:</label>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {categories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setFilterCategory(cat)}
-              style={{
-                background: filterCategory === cat ? '#6d28d9' : 'rgba(107, 114, 128, 0.3)',
-                color: filterCategory === cat ? '#fff' : '#a5b4fc',
-                border: '1px solid #6d28d9',
-                borderRadius: 8,
-                padding: '8px 16px',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-              }}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
+  {/* Selección de categorías removida por solicitud (siempre All) */}
 
       {/* Selección de pares */}
       <div style={{ marginBottom: 20 }}>

@@ -8,6 +8,12 @@ interface SignalsTableProps {
   setFilterCategory: (category: string) => void;
   categories: string[];
   onSetActive: (signal: Signal) => void;
+  // Metadatos del sistema de lotes
+  batchMeta?: {
+    batchCount?: number;
+    batchSignals?: number;
+    nextBatchTime?: number | null;
+  };
 }
 
 const SignalsTable: React.FC<SignalsTableProps> = ({
@@ -16,101 +22,56 @@ const SignalsTable: React.FC<SignalsTableProps> = ({
   setFilterCategory,
   categories,
   onSetActive,
+  batchMeta,
 }) => {
+  const last = filteredSignals[0];
+  const remainingMins = batchMeta?.nextBatchTime ? Math.max(0, Math.ceil((batchMeta.nextBatchTime - Date.now()) / 60000)) : null;
+
   return (
-    <section style={{ margin: '40px auto 0', maxWidth: 1200, background: 'rgba(30, 27, 75, 0.98)', borderRadius: 18, boxShadow: '0 2px 16px #0002', padding: 32 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2 style={{ color: '#a78bfa', fontSize: '1.4rem', fontWeight: 700, letterSpacing: 1, margin: 0 }}>
-          Últimas señales ({filteredSignals.length})
+    <section style={{ margin: '40px auto 0', maxWidth: 1200, background: 'rgba(30, 27, 75, 0.98)', borderRadius: 18, boxShadow: '0 2px 16px #0002', padding: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h2 style={{ color: '#a78bfa', fontSize: '1.3rem', fontWeight: 700, margin: 0 }}>
+          Operación activa
+          {typeof batchMeta?.batchCount === 'number' && (
+            <span style={{ marginLeft: 12, background: 'rgba(167,139,250,0.2)', color: '#a78bfa', padding: '4px 10px', borderRadius: 12, fontSize: '0.8rem' }}>
+              Lote #{batchMeta.batchCount} • {batchMeta?.batchSignals ?? 0}/2
+            </span>
+          )}
         </h2>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <Filter size={16} style={{ color: '#a5b4fc' }} />
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            style={{
-              background: 'rgba(107, 114, 128, 0.3)',
-              color: '#e0e7ff',
-              border: '1px solid #6d28d9',
-              borderRadius: 8,
-              padding: '6px 12px',
-              fontSize: '0.9rem',
-            }}
-          >
-            {categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
+  {/* Filtro de categorías eliminado para simplificar la vista */}
       </div>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', color: '#fff', borderCollapse: 'collapse', fontSize: '1.05rem', minWidth: 700 }}>
-          <thead>
-            <tr style={{ borderBottom: '2px solid #6d28d9', color: '#a5b4fc' }}>
-              <th style={{ padding: 10 }}>Par</th>
-              <th style={{ padding: 10 }}>Señal</th>
-              <th style={{ padding: 10 }}>Confianza</th>
-              <th style={{ padding: 10 }}>Entrada</th>
-              <th style={{ padding: 10 }}>TP</th>
-              <th style={{ padding: 10 }}>SL</th>
-              <th style={{ padding: 10 }}>Hora</th>
-              <th style={{ padding: 10 }}>Notas</th>
-              <th style={{ padding: 10 }}>Acción</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredSignals.map(s => (
-              <tr key={s.id} style={{ borderBottom: '1px solid #334155', background: s.signal === 'BUY' ? 'rgba(34,211,238,0.04)' : 'rgba(244,114,182,0.04)' }}>
-                <td style={{ padding: 10, fontWeight: 600 }}>{s.display}</td>
-                <td style={{ padding: 10, color: s.signal === 'BUY' ? '#22d3ee' : '#f472b6', fontWeight: 'bold', letterSpacing: 1 }}>{s.signal}</td>
-                <td style={{ padding: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <div style={{ 
-                      width: '40px', 
-                      height: '6px', 
-                      background: 'rgba(107, 114, 128, 0.3)', 
-                      borderRadius: 3,
-                      overflow: 'hidden'
-                    }}>
-                      <div style={{ 
-                        width: `${s.confidence}%`, 
-                        height: '100%', 
-                        background: s.confidence > 80 ? '#22d3ee' : s.confidence > 60 ? '#fbbf24' : '#f472b6',
-                        borderRadius: 3
-                      }}></div>
-                    </div>
-                    {s.confidence}%
-                  </div>
-                </td>
-                <td style={{ padding: 10 }}>{s.entry}</td>
-                <td style={{ padding: 10, color: '#16e0b3' }}>{s.tp}</td>
-                <td style={{ padding: 10, color: '#f472b6' }}>{s.sl}</td>
-                <td style={{ padding: 10 }}>{s.timestamp}</td>
-                <td style={{ padding: 10, color: '#fbbf24', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.notes}</td>
-                <td style={{ padding: 10 }}>
-                  <button
-                    onClick={() => onSetActive(s)}
-                    style={{ background: '#6d28d9', color: '#fff', border: 'none', borderRadius: 8, padding: '4px 14px', fontWeight: 600, cursor: 'pointer', fontSize: '0.98rem', boxShadow: '0 1px 4px #6d28d933', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 4 }}
-                  >
-                    <BarChart3 size={14} />
-                    Ver
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {filteredSignals.length === 0 && (
-              <tr>
-                <td colSpan={9} style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>
-                  No hay señales disponibles para los filtros seleccionados
-                </td>
-              </tr>
+
+      {/* Card compacta: solo 1 operación visible */}
+      {last ? (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, alignItems: 'center', background: 'linear-gradient(135deg, rgba(34,211,238,0.08) 0%, rgba(30,27,75,1) 100%)', border: `2px solid ${last.signal === 'BUY' ? '#22d3ee' : '#f472b6'}`, borderRadius: 14, padding: 16 }}>
+          <div>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'baseline' }}>
+              <div style={{ color: '#e0e7ff', fontWeight: 700, fontSize: '1.1rem' }}>{last.display}</div>
+              <div style={{ color: last.signal === 'BUY' ? '#22d3ee' : '#f472b6', fontWeight: 800 }}>{last.signal}</div>
+              <div style={{ color: '#a5b4fc', fontSize: '0.9rem' }}>Conf: {last.confidence}%</div>
+            </div>
+            <div style={{ display: 'flex', gap: 16, marginTop: 8, color: '#c7d2fe' }}>
+              <div>Entrada: <b>{last.entry}</b></div>
+              <div>TP: <b style={{ color: '#16e0b3' }}>{last.tp}</b></div>
+              <div>SL: <b style={{ color: '#f472b6' }}>{last.sl}</b></div>
+              <div>Hora: <b>{last.timestamp}</b></div>
+            </div>
+            <div style={{ color: '#fbbf24', marginTop: 8, fontSize: '0.92rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{last.notes}</div>
+          </div>
+          <div>
+            <button onClick={() => onSetActive(last)} style={{ background: '#6d28d9', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 18px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #6d28d955', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <BarChart3 size={16} /> Ver en gráfico
+            </button>
+            {remainingMins !== null && (
+              <div style={{ color: '#a5b4fc', fontSize: '0.85rem', marginTop: 8 }}>
+                Próximo lote en: <b>{remainingMins} min</b>
+              </div>
             )}
-          </tbody>
-        </table>
-      </div>
-      <div style={{ color: '#64748b', fontSize: '0.95rem', marginTop: 18, textAlign: 'center' }}>
-        <b>Tip:</b> Recuerda siempre usar gestión de riesgo y no operar solo por la señal. Considera el contexto del mercado y noticias relevantes.
-      </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ textAlign: 'center', padding: 24, color: '#64748b' }}>Sin operación activa</div>
+      )}
     </section>
   );
 };
