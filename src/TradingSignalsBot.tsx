@@ -12,6 +12,19 @@ const TradingSignalsBot = () => {
   const [running, setRunning] = useState(false);
   const [activeTrade, setActiveTrade] = useState<Signal | null>(null);
   const [visibleId, setVisibleId] = useState<number | null>(null); // cuál mostrar si hay 2
+
+  // Cargar preferencia previa (par preferido) al montar
+  React.useEffect(() => {
+    const preferredPair = localStorage.getItem('preferred_pair');
+    if (preferredPair && signals.length > 0) {
+      const match = signals.find(s => s.pair === preferredPair);
+      if (match) {
+        setActiveTrade(match);
+        setVisibleId(match.id);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [selectedPairs, setSelectedPairs] = useState<string[]>(['EURUSD', 'BTCUSD', 'XAUUSD']);
   const [showSettings, setShowSettings] = useState(false);
   const [balance, setBalance] = useState<number>(1000);
@@ -65,7 +78,12 @@ const TradingSignalsBot = () => {
   React.useEffect(() => {
     if (signals.length > 0) {
       // mantener visibleId si sigue existiendo; si no, usar la más reciente
-      const current = visibleId && signals.find(s => s.id === visibleId);
+      let current = visibleId && signals.find(s => s.id === visibleId);
+      // Si no existe, intentar por preferencia de par
+      if (!current) {
+        const preferredPair = localStorage.getItem('preferred_pair');
+        if (preferredPair) current = signals.find(s => s.pair === preferredPair) || null;
+      }
       const chosen = current || signals[0];
       setActiveTrade(chosen);
       setVisibleId(chosen.id);
@@ -117,7 +135,7 @@ const TradingSignalsBot = () => {
         filterCategory={'All'}
         setFilterCategory={() => {}}
         categories={['All']}
-        onSetActive={(s) => { setActiveTrade(s); setVisibleId(s.id); }}
+  onSetActive={(s) => { setActiveTrade(s); setVisibleId(s.id); try { localStorage.setItem('preferred_pair', s.pair); } catch {} }}
         batchMeta={batchMeta}
   activeSignalId={visibleId}
       />
