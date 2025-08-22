@@ -11,6 +11,11 @@ interface SettingsPanelProps {
   maxSignals: number;
   setMaxSignals: (max: number) => void;
   filteredPairs: TradingPair[];
+  // Nuevos: gestión de riesgo
+  balance: number;
+  setBalance: (v: number) => void;
+  riskPct: number; // % por operación
+  setRiskPct: (v: number) => void;
 }
 
 const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -22,6 +27,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   maxSignals,
   setMaxSignals,
   filteredPairs,
+  balance,
+  setBalance,
+  riskPct,
+  setRiskPct,
 }) => {
   if (!showSettings) return null;
 
@@ -56,8 +65,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         </div>
       </div>
 
-      {/* Configuración de intervalo */}
-      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+  {/* Configuración de intervalo y riesgo */}
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
         <div>
           <label style={{ color: '#e0e7ff', fontSize: '1rem', marginBottom: 8, display: 'block' }}>Intervalo (ms):</label>
           <input
@@ -92,6 +101,43 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               borderRadius: 8,
               padding: '8px 12px',
               width: '120px',
+            }}
+          />
+        </div>
+        <div>
+          <label style={{ color: '#e0e7ff', fontSize: '1rem', marginBottom: 8, display: 'block' }}>Balance (USD):</label>
+          <input
+            type="number"
+            value={balance}
+            onChange={(e) => setBalance(Number(e.target.value))}
+            min="100"
+            step="50"
+            style={{
+              background: 'rgba(107, 114, 128, 0.3)',
+              color: '#e0e7ff',
+              border: '1px solid #6d28d9',
+              borderRadius: 8,
+              padding: '8px 12px',
+              width: '160px',
+            }}
+          />
+        </div>
+        <div>
+          <label style={{ color: '#e0e7ff', fontSize: '1rem', marginBottom: 8, display: 'block' }}>Riesgo por operación (%):</label>
+          <input
+            type="number"
+            value={riskPct}
+            onChange={(e) => setRiskPct(Number(e.target.value))}
+            min="0.1"
+            max="5"
+            step="0.1"
+            style={{
+              background: 'rgba(107, 114, 128, 0.3)',
+              color: '#e0e7ff',
+              border: '1px solid #6d28d9',
+              borderRadius: 8,
+              padding: '8px 12px',
+              width: '160px',
             }}
           />
         </div>

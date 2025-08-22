@@ -13,6 +13,8 @@ const TradingSignalsBot = () => {
   const [activeTrade, setActiveTrade] = useState<Signal | null>(null);
   const [selectedPairs, setSelectedPairs] = useState<string[]>(['EURUSD', 'BTCUSD', 'XAUUSD']);
   const [showSettings, setShowSettings] = useState(false);
+  const [balance, setBalance] = useState<number>(1000);
+  const [riskPct, setRiskPct] = useState<number>(1.0); // 1% por operación por defecto
   // Categorías deshabilitadas por solicitud: siempre 'All'
   const filterCategory = 'All';
   const [signalInterval, setSignalInterval] = useState(7000);
@@ -83,6 +85,10 @@ const TradingSignalsBot = () => {
         maxSignals={maxSignals}
         setMaxSignals={setMaxSignals}
         filteredPairs={filteredPairs}
+  balance={balance}
+  setBalance={setBalance}
+  riskPct={riskPct}
+  setRiskPct={setRiskPct}
       />
 
       {/* Panel de operación en curso y gráfico */}
@@ -93,6 +99,8 @@ const TradingSignalsBot = () => {
           loading={loading}
           error={error}
           running={running}
+          balance={balance}
+          riskPct={riskPct}
         />
       </main>
 

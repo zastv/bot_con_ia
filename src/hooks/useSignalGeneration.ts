@@ -3,6 +3,14 @@ import { Signal, TradingPair } from '../types';
 import { fetchPrice } from '../services/priceService';
 import { timeframes } from '../data/tradingPairs';
 
+// Redondeo por símbolo para mostrar precios con precisión adecuada
+const roundBySymbol = (symbol: string, value: number) => {
+  if (symbol === 'BTCUSD' || symbol === 'ETHUSD') return parseFloat(value.toFixed(0));
+  if (symbol === 'XAUUSD' || symbol === 'XAGUSD') return parseFloat(value.toFixed(2));
+  if (symbol.includes('JPY')) return parseFloat(value.toFixed(3));
+  return parseFloat(value.toFixed(5));
+};
+
 export const useSignalGeneration = (
   running: boolean,
   selectedPairs: string[],
@@ -70,16 +78,16 @@ export const useSignalGeneration = (
           return;
         }
 
+        // TP/SL por porcentaje: RR 2:1 (TP +2%, SL -1%)
+        const PCT_TP = 0.02; // +2%
+        const PCT_SL = 0.01; // -1%
         let tp = 0, sl = 0;
-        if (pairObj.symbol === 'BTCUSD' || pairObj.symbol === 'ETHUSD') {
-          tp = parseFloat((entry + (isBuy ? 200 : -200)).toFixed(0));
-          sl = parseFloat((entry - (isBuy ? 100 : -100)).toFixed(0));
-        } else if (pairObj.symbol === 'XAUUSD') {
-          tp = parseFloat((entry + (isBuy ? 2 : -2)).toFixed(2));
-          sl = parseFloat((entry - (isBuy ? 1 : -1)).toFixed(2));
+        if (isBuy) {
+          tp = roundBySymbol(pairObj.symbol, entry * (1 + PCT_TP));
+          sl = roundBySymbol(pairObj.symbol, entry * (1 - PCT_SL));
         } else {
-          tp = parseFloat((entry + (isBuy ? 0.002 : -0.002)).toFixed(5));
-          sl = parseFloat((entry - (isBuy ? 0.001 : -0.001)).toFixed(5));
+          tp = roundBySymbol(pairObj.symbol, entry * (1 - PCT_TP));
+          sl = roundBySymbol(pairObj.symbol, entry * (1 + PCT_SL));
         }
 
         // Simular mayor probabilidad si varias temporalidades coinciden
@@ -90,13 +98,13 @@ export const useSignalGeneration = (
 
         let notes = '';
         if (tfScore >= 3) {
-          notes = `Alta probabilidad: Coincidencia de tendencia en ${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}. \nSe detecta impulso fuerte y confirmación por indicadores técnicos (RSI, MACD, medias móviles). \nEl precio está cerca de soporte/resistencia relevante y el volumen acompaña el movimiento. \nSe recomienda gestión de riesgo adecuada.`;
+          notes = `Alta probabilidad: Coincidencia de tendencia en ${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}. \nRR 2:1 aplicado (TP +2%, SL -1%). \nSe detecta impulso fuerte y confirmación por indicadores técnicos (RSI, MACD, medias móviles). \nEl precio está cerca de soporte/resistencia relevante y el volumen acompaña el movimiento. \nSe recomienda gestión de riesgo adecuada.`;
         } else if (tfScore <= -3) {
-          notes = `Alta probabilidad: Coincidencia de tendencia en ${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}. \nSe observa agotamiento de la tendencia previa y señales de reversión en temporalidades mayores. \nConfirmación por patrones de velas y divergencia en indicadores. \nOperar con gestión de riesgo.`;
+          notes = `Alta probabilidad: Coincidencia de tendencia en ${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}. \nRR 2:1 aplicado (TP +2%, SL -1%). \nSe observa agotamiento de la tendencia previa y señales de reversión en temporalidades mayores. \nConfirmación por patrones de velas y divergencia en indicadores. \nOperar con gestión de riesgo.`;
         } else if (confidence < 70) {
-          notes = `Señal débil: Las temporalidades no están alineadas o hay alta volatilidad. \nFalta confirmación clara por indicadores técnicos. \nEvitar operar con lotaje alto y esperar mejor oportunidad.`;
+          notes = `Señal débil: Las temporalidades no están alineadas o hay alta volatilidad. \nRR 2:1 aplicado (TP +2%, SL -1%). \nFalta confirmación clara por indicadores técnicos. \nEvitar operar con lotaje alto y esperar mejor oportunidad.`;
         } else {
-          notes = `Condiciones normales: Señal generada por coincidencia parcial en temporalidades (${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}). \nAlgunos indicadores confirman la entrada, pero el contexto no es óptimo. \nRevisar calendario económico y contexto de mercado antes de operar.`;
+          notes = `Condiciones normales: Señal generada por coincidencia parcial en temporalidades (${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}). \nRR 2:1 aplicado (TP +2%, SL -1%). \nAlgunos indicadores confirman la entrada, pero el contexto no es óptimo. \nRevisar calendario económico y contexto de mercado antes de operar.`;
         }
 
         const signal: Signal = {

@@ -26,6 +26,14 @@ const SignalsTable: React.FC<SignalsTableProps> = ({
 }) => {
   const last = filteredSignals[0];
   const remainingMins = batchMeta?.nextBatchTime ? Math.max(0, Math.ceil((batchMeta.nextBatchTime - Date.now()) / 60000)) : null;
+  const rrInfo = last ? (() => {
+    const risk = Math.abs(last.entry - last.sl);
+    const reward = Math.abs(last.tp - last.entry);
+    const rr = risk > 0 ? reward / risk : 0;
+    const tpPct = ((last.tp - last.entry) / last.entry) * 100;
+    const slPct = ((last.sl - last.entry) / last.entry) * 100;
+    return { rr, tpPct, slPct };
+  })() : null;
 
   return (
   <section style={{ margin: '40px auto 0', maxWidth: 1200, background: 'rgba(30, 27, 75, 0.98)', borderRadius: 18, boxShadow: '0 2px 16px #0002', padding: 24, overflow: 'hidden' }}>
@@ -56,6 +64,11 @@ const SignalsTable: React.FC<SignalsTableProps> = ({
               <div>SL: <b style={{ color: '#f472b6' }}>{last.sl}</b></div>
               <div>Hora: <b>{last.timestamp}</b></div>
             </div>
+            {rrInfo && (
+              <div style={{ color: '#a5b4fc', marginTop: 6 }}>
+                RR: <b>{rrInfo.rr.toFixed(2)}</b> • TP <b style={{ color: '#16e0b3' }}>{rrInfo.tpPct >= 0 ? '+' : ''}{rrInfo.tpPct.toFixed(2)}%</b> • SL <b style={{ color: '#f472b6' }}>{rrInfo.slPct.toFixed(2)}%</b>
+              </div>
+            )}
             <div style={{ color: '#fbbf24', marginTop: 8, fontSize: '0.92rem', whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{last.notes}</div>
           </div>
           <div style={{ width: 220, justifySelf: 'end', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>

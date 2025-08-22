@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, RefreshCw, Copy } from 'lucide-react';
 import { Signal } from '../../types';
 
 interface ActiveTradeProps {
@@ -7,9 +7,38 @@ interface ActiveTradeProps {
   loading: boolean;
   error: string | null;
   running: boolean;
+  balance?: number;
+  riskPct?: number; // % de riesgo por operación
 }
 
-const ActiveTrade: React.FC<ActiveTradeProps> = ({ activeTrade, loading, error, running }) => {
+const ActiveTrade: React.FC<ActiveTradeProps> = ({ activeTrade, loading, error, running, balance = 1000, riskPct = 1 }) => {
+  const rrInfo = React.useMemo(() => {
+    if (!activeTrade) return null;
+    const { entry, tp, sl } = activeTrade;
+    const risk = Math.abs(entry - sl);
+    const reward = Math.abs(tp - entry);
+    const rr = risk > 0 ? reward / risk : 0;
+    const tpPct = ((tp - entry) / entry) * 100;
+    const slPct = ((sl - entry) / entry) * 100;
+    return {
+      rr: Number.isFinite(rr) ? rr : 0,
+      tpPct,
+      slPct
+    };
+  }, [activeTrade]);
+  const copyText = (text: string) => {
+    try { navigator.clipboard.writeText(text); } catch {}
+  };
+  // Cálculo simple de cantidad/importe asumiendo que el riesgo se mide contra distancia a SL
+  const sizing = React.useMemo(() => {
+    if (!activeTrade) return null;
+    const riskAmount = (balance * riskPct) / 100;
+    const riskPerUnit = Math.abs(activeTrade.entry - activeTrade.sl);
+    if (riskPerUnit <= 0) return { qty: 0, amount: 0 };
+    const qty = riskAmount / riskPerUnit;
+    const amount = qty * activeTrade.entry;
+    return { qty, amount };
+  }, [activeTrade, balance, riskPct]);
   return (
     <section style={{ flex: 1, minWidth: 340, background: 'rgba(16,185,129,0.10)', borderRadius: 18, boxShadow: '0 2px 8px #0001', padding: 24, minHeight: 420, display: 'flex', flexDirection: 'column', gap: 18 }}>
       <h2 style={{ color: '#38bdf8', fontSize: '1.2rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -28,7 +57,31 @@ const ActiveTrade: React.FC<ActiveTradeProps> = ({ activeTrade, loading, error, 
             <div style={{ color: '#fff', fontWeight: 600 }}>TP: <span style={{ color: '#16e0b3' }}>{activeTrade.tp}</span></div>
             <div style={{ color: '#fff', fontWeight: 600 }}>SL: <span style={{ color: '#f472b6' }}>{activeTrade.sl}</span></div>
           </div>
+          {rrInfo && (
+            <div style={{ color: '#a5b4fc', fontWeight: 600, marginBottom: 8 }}>
+              RR: <b>{rrInfo.rr.toFixed(2)}</b> • TP <b style={{ color: '#16e0b3' }}>{rrInfo.tpPct >= 0 ? '+' : ''}{rrInfo.tpPct.toFixed(2)}%</b> • SL <b style={{ color: '#f472b6' }}>{rrInfo.slPct.toFixed(2)}%</b>
+            </div>
+          )}
           <div style={{ color: '#fbbf24', fontWeight: 500, marginBottom: 8 }}>{activeTrade.notes}</div>
+          {sizing && (
+            <div style={{ color: '#e2e8f0', fontWeight: 600, marginBottom: 8 }}>
+              Cantidad estimada: <b>{sizing.qty.toFixed(3)}</b> • Importe aprox.: <b>${sizing.amount.toFixed(2)}</b> • Riesgo: <b>{riskPct}%</b>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+            <button onClick={() => copyText(String(activeTrade.entry))} title="Copiar entrada" style={{ background: '#334155', color: '#e2e8f0', border: 'none', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+              <Copy size={14}/> Entrada
+            </button>
+            <button onClick={() => copyText(String(activeTrade.tp))} title="Copiar TP" style={{ background: '#065f46', color: '#d1fae5', border: 'none', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+              <Copy size={14}/> TP
+            </button>
+            <button onClick={() => copyText(String(activeTrade.sl))} title="Copiar SL" style={{ background: '#7f1d1d', color: '#fee2e2', border: 'none', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+              <Copy size={14}/> SL
+            </button>
+            <button onClick={() => copyText(`${activeTrade.display} ${activeTrade.signal}\nEntrada: ${activeTrade.entry}\nTP: ${activeTrade.tp}\nSL: ${activeTrade.sl}`)} title="Copiar todo" style={{ background: '#6d28d9', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+              <Copy size={14}/> Copiar todo
+            </button>
+          </div>
           <div style={{ color: '#a5b4fc', fontSize: '0.98rem' }}>Confianza: <b>{activeTrade.confidence}%</b></div>
           <div style={{ color: '#64748b', fontSize: '0.95rem', marginTop: 4 }}>{activeTrade.timestamp}</div>
         </div>
