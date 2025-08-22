@@ -11,6 +11,7 @@ import { Signal } from './types';
 const TradingSignalsBot = () => {
   const [running, setRunning] = useState(false);
   const [activeTrade, setActiveTrade] = useState<Signal | null>(null);
+  const [visibleId, setVisibleId] = useState<number | null>(null); // cuál mostrar si hay 2
   const [selectedPairs, setSelectedPairs] = useState<string[]>(['EURUSD', 'BTCUSD', 'XAUUSD']);
   const [showSettings, setShowSettings] = useState(false);
   const [balance, setBalance] = useState<number>(1000);
@@ -62,10 +63,17 @@ const TradingSignalsBot = () => {
 
   // Actualizar activeTrade cuando se genere la primera señal
   React.useEffect(() => {
-    if (signals.length > 0 && !activeTrade) {
-      setActiveTrade(signals[0]);
+    if (signals.length > 0) {
+      // mantener visibleId si sigue existiendo; si no, usar la más reciente
+      const current = visibleId && signals.find(s => s.id === visibleId);
+      const chosen = current || signals[0];
+      setActiveTrade(chosen);
+      setVisibleId(chosen.id);
+    } else {
+      setActiveTrade(null);
+      setVisibleId(null);
     }
-  }, [signals, activeTrade]);
+  }, [signals]);
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #181e2a 0%, #6d28d9 100%)', padding: 0, fontFamily: 'Inter, sans-serif' }}>
@@ -105,12 +113,13 @@ const TradingSignalsBot = () => {
       </main>
 
       <SignalsTable
-        filteredSignals={filteredSignals.slice(0, 1)}
+        filteredSignals={filteredSignals.slice(0, 2)}
         filterCategory={'All'}
         setFilterCategory={() => {}}
         categories={['All']}
-        onSetActive={handleSetActive}
+        onSetActive={(s) => { setActiveTrade(s); setVisibleId(s.id); }}
         batchMeta={batchMeta}
+  activeSignalId={visibleId}
       />
 
       <style>{`

@@ -121,8 +121,11 @@ export const useSignalGeneration = (
         };
 
         if (!cancelled) {
-          // Solo UNA operación visible: mantener array con 1 elemento
-          setSignals([signal]);
+          // Mantener hasta 2 señales del lote, priorizando la más reciente y evitando duplicados por par
+          setSignals(prev => {
+            const withoutSamePair = prev.filter(s => s.pair !== signal.pair);
+            return [signal, ...withoutSamePair].slice(0, 2);
+          });
           setBatchSignals(prev => prev + 1);
           setLoading(false);
         }

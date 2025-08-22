@@ -35,9 +35,19 @@ const ActiveTrade: React.FC<ActiveTradeProps> = ({ activeTrade, loading, error, 
     const riskAmount = (balance * riskPct) / 100;
     const riskPerUnit = Math.abs(activeTrade.entry - activeTrade.sl);
     if (riskPerUnit <= 0) return { qty: 0, amount: 0 };
-    const qty = riskAmount / riskPerUnit;
-    const amount = qty * activeTrade.entry;
-    return { qty, amount };
+  let qtyRaw = riskAmount / riskPerUnit;
+  // Redondeo por instrumento
+  const pair = activeTrade.pair;
+  const isCrypto = pair.startsWith('BTC') || pair.startsWith('ETH');
+  const isMetal = pair.startsWith('XAU') || pair.startsWith('XAG');
+  let step = 0.01; // forex por defecto
+  let minQty = 0.01;
+  if (isCrypto) { step = 0.001; minQty = 0.001; }
+  if (isMetal) { step = 0.01; minQty = 0.01; }
+  const roundStep = (v: number, st: number) => Math.floor(v / st) * st;
+  const qty = Math.max(minQty, parseFloat(roundStep(qtyRaw, step).toFixed(String(step).split('.')[1]?.length || 0)));
+  const amount = qty * activeTrade.entry;
+  return { qty, amount };
   }, [activeTrade, balance, riskPct]);
   return (
     <section style={{ flex: 1, minWidth: 340, background: 'rgba(16,185,129,0.10)', borderRadius: 18, boxShadow: '0 2px 8px #0001', padding: 24, minHeight: 420, display: 'flex', flexDirection: 'column', gap: 18 }}>
