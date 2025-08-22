@@ -23,7 +23,6 @@ const TradingSignalsBot = () => {
         setVisibleId(match.id);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [selectedPairs, setSelectedPairs] = useState<string[]>(['EURUSD', 'BTCUSD', 'XAUUSD']);
   const [showSettings, setShowSettings] = useState(false);
