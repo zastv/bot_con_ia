@@ -7,12 +7,12 @@ interface TradingViewWidgetProps {
 
 const TradingViewWidget: React.FC<TradingViewWidgetProps> = ({ activeTrade }) => {
   const getSymbol = () => {
-    if (!activeTrade) return 'FX:EURUSD';
+  if (!activeTrade) return 'BINANCE:BTCUSDT';
     
-    if (activeTrade.pair === 'BTCUSD') return 'CRYPTO:BTCUSD';
+  if (activeTrade.pair === 'BTCUSD') return 'BINANCE:BTCUSDT';
     if (activeTrade.pair === 'ETHUSD') return 'CRYPTO:ETHUSD';
     if (activeTrade.pair === 'XAUUSD') return 'OANDA:XAUUSD';
-    return 'FX:' + activeTrade.pair;
+  return 'FX:' + activeTrade.pair;
   };
 
   // Cálculo simple para posicionar bandas (porcentajes relativos, no escala real del precio)

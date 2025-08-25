@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Signal, TradingPair } from '../types';
+import { Signal, TradingPair, TradeEvent } from '../types';
 import { fetchPrice } from '../services/priceService';
 import { timeframes } from '../data/tradingPairs';
 
@@ -26,6 +26,7 @@ export const useSignalGeneration = (
   const [batchStart, setBatchStart] = useState<number | null>(null);
   const [batchSignals, setBatchSignals] = useState(0);
   const [nextBatchTime, setNextBatchTime] = useState<number | null>(null);
+  const [events, setEvents] = useState<TradeEvent[]>([]);
 
   useEffect(() => {
     if (!running) return;
@@ -57,7 +58,7 @@ export const useSignalGeneration = (
         setLoading(true);
         setError(null);
 
-        const availablePairs = tradingPairs.filter(p => selectedPairs.includes(p.symbol));
+  const availablePairs = tradingPairs.filter(p => selectedPairs.includes(p.symbol)).filter(p => p.symbol === 'BTCUSD');
         if (availablePairs.length === 0) {
           setLoading(false);
           return;
@@ -121,6 +122,16 @@ export const useSignalGeneration = (
         };
 
         if (!cancelled) {
+          // Evento: creada
+          setEvents(prev => [...prev, {
+            id: Date.now(),
+            tradeId: signal.id,
+            pair: signal.pair,
+            type: 'CREATED',
+            message: `${signal.display}: señal ${signal.signal} creada. Entrada ${signal.entry}, TP ${signal.tp}, SL ${signal.sl}`,
+            timestamp: new Date().toLocaleTimeString(),
+            batch: batchCount + 1,
+          }]);
           // Mantener hasta 2 señales del lote, priorizando la más reciente y evitando duplicados por par
           setSignals(prev => {
             const withoutSamePair = prev.filter(s => s.pair !== signal.pair);
@@ -149,6 +160,7 @@ export const useSignalGeneration = (
       batchCount,
       batchSignals,
       nextBatchTime,
-    }
+    },
+    events,
   };
 };

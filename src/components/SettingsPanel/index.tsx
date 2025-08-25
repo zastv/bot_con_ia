@@ -40,29 +40,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
       
   {/* Selección de categorías removida por solicitud (siempre All) */}
 
-      {/* Selección de pares */}
-      <div style={{ marginBottom: 20 }}>
-        <label style={{ color: '#e0e7ff', fontSize: '1rem', marginBottom: 8, display: 'block' }}>Pares activos ({selectedPairs.length} seleccionados):</label>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
-          {filteredPairs.map(pair => (
-            <button
-              key={pair.symbol}
-              onClick={() => togglePairSelection(pair.symbol)}
-              style={{
-                background: selectedPairs.includes(pair.symbol) ? '#22d3ee' : 'rgba(107, 114, 128, 0.3)',
-                color: selectedPairs.includes(pair.symbol) ? '#fff' : '#a5b4fc',
-                border: '1px solid #6d28d9',
-                borderRadius: 8,
-                padding: '8px 12px',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-                textAlign: 'left',
-              }}
-            >
-              {pair.display}
-            </button>
-          ))}
-        </div>
+      {/* Pares bloqueados a BTCUSD: mostramos info */}
+      <div style={{ marginBottom: 12, color: '#a5b4fc' }}>
+        Par activo: <b>Bitcoin (BTCUSD)</b>
       </div>
 
   {/* Configuración de intervalo y riesgo */}

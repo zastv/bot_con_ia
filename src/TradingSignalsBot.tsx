@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import Header from './components/Header';
-import SettingsPanel from './components/SettingsPanel';
 import TradingViewWidget from './components/TradingViewWidget';
 import ActiveTrade from './components/ActiveTrade';
 import SignalsTable from './components/SignalsTable';
+import TradeFeed from './components/TradeFeed';
 import { useSignalGeneration } from './hooks/useSignalGeneration';
-import { tradingPairs, categories } from './data/tradingPairs';
+import { tradingPairs } from './data/tradingPairs';
 import { Signal } from './types';
 
 const TradingSignalsBot = () => {
-  const [running, setRunning] = useState(false);
+  const [running, setRunning] = useState(true);
   const [activeTrade, setActiveTrade] = useState<Signal | null>(null);
   const [visibleId, setVisibleId] = useState<number | null>(null); // cuál mostrar si hay 2
 
@@ -24,8 +24,7 @@ const TradingSignalsBot = () => {
       }
     }
   }, []);
-  const [selectedPairs, setSelectedPairs] = useState<string[]>(['EURUSD', 'BTCUSD', 'XAUUSD']);
-  const [showSettings, setShowSettings] = useState(false);
+  const [selectedPairs, setSelectedPairs] = useState<string[]>(['BTCUSD']);
   const [balance, setBalance] = useState<number>(1000);
   const [riskPct, setRiskPct] = useState<number>(1.0); // 1% por operación por defecto
   // Categorías deshabilitadas por solicitud: siempre 'All'
@@ -33,7 +32,7 @@ const TradingSignalsBot = () => {
   const [signalInterval, setSignalInterval] = useState(7000);
   const [maxSignals, setMaxSignals] = useState(8);
 
-  const { signals, loading, error, clearSignals, batchMeta } = useSignalGeneration(
+  const { signals, loading, error, clearSignals, batchMeta, events } = useSignalGeneration(
     running,
     selectedPairs,
     signalInterval,
@@ -41,32 +40,15 @@ const TradingSignalsBot = () => {
     tradingPairs
   );
 
-  const handleToggle = () => {
-    if (running) {
-      setRunning(false);
-      setActiveTrade(null);
-    } else {
-      clearSignals();
-      setActiveTrade(null);
-      setRunning(true);
-    }
-  };
+  // Siempre encendido: no hay toggle
 
   const handleSetActive = (signal: Signal) => {
     setActiveTrade(signal);
   };
 
-  const togglePairSelection = (symbol: string) => {
-    setSelectedPairs(prev => 
-      prev.includes(symbol) 
-        ? prev.filter(s => s !== symbol)
-        : [...prev, symbol]
-    );
-  };
+  // Sin selección de pares (forzado a BTCUSD)
 
-  const filteredPairs = filterCategory === 'All' 
-    ? tradingPairs 
-    : tradingPairs.filter(p => p.category === filterCategory);
+  // Panel de configuración eliminado; no se usan pares filtrados
 
   const filteredSignals = signals.filter(s => 
     filterCategory === 'All' || 
@@ -94,27 +76,8 @@ const TradingSignalsBot = () => {
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #181e2a 0%, #6d28d9 100%)', padding: 0, fontFamily: 'Inter, sans-serif' }}>
-      <Header
-        running={running}
-        showSettings={showSettings}
-        onToggleBot={handleToggle}
-        onToggleSettings={() => setShowSettings(!showSettings)}
-      />
+  <Header />
 
-      <SettingsPanel
-        showSettings={showSettings}
-        selectedPairs={selectedPairs}
-        togglePairSelection={togglePairSelection}
-        signalInterval={signalInterval}
-        setSignalInterval={setSignalInterval}
-        maxSignals={maxSignals}
-        setMaxSignals={setMaxSignals}
-        filteredPairs={filteredPairs}
-  balance={balance}
-  setBalance={setBalance}
-  riskPct={riskPct}
-  setRiskPct={setRiskPct}
-      />
 
       {/* Panel de operación en curso y gráfico */}
       <main style={{ maxWidth: 1200, margin: '32px auto 0', display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'center' }}>
@@ -138,6 +101,8 @@ const TradingSignalsBot = () => {
         batchMeta={batchMeta}
   activeSignalId={visibleId}
       />
+
+  <TradeFeed events={events} />
 
       <style>{`
         .spin { animation: spin 1s linear infinite; }
