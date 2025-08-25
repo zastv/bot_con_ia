@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, RefreshCw, Copy } from 'lucide-react';
+import { TrendingUp, TrendingDown, RefreshCw, Copy, XCircle } from 'lucide-react';
 import { Signal } from '../../types';
 
 interface ActiveTradeProps {
@@ -9,9 +9,10 @@ interface ActiveTradeProps {
   running: boolean;
   balance?: number;
   riskPct?: number; // % de riesgo por operación
+  onClose?: () => void; // cierre manual
 }
 
-const ActiveTrade: React.FC<ActiveTradeProps> = ({ activeTrade, loading, error, running, balance = 1000, riskPct = 1 }) => {
+const ActiveTrade: React.FC<ActiveTradeProps> = ({ activeTrade, loading, error, running, balance = 1000, riskPct = 1, onClose }) => {
   const rrInfo = React.useMemo(() => {
     if (!activeTrade) return null;
     const { entry, tp, sl } = activeTrade;
@@ -91,6 +92,11 @@ const ActiveTrade: React.FC<ActiveTradeProps> = ({ activeTrade, loading, error, 
             <button onClick={() => copyText(`${activeTrade.display} ${activeTrade.signal}\nEntrada: ${activeTrade.entry}\nTP: ${activeTrade.tp}\nSL: ${activeTrade.sl}`)} title="Copiar todo" style={{ background: '#6d28d9', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
               <Copy size={14}/> Copiar todo
             </button>
+            {onClose && (
+              <button onClick={onClose} title="Cerrar operación" style={{ background: '#991b1b', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginLeft: 'auto' }}>
+                <XCircle size={14}/> Cerrar operación
+              </button>
+            )}
           </div>
           <div style={{ color: '#a5b4fc', fontSize: '0.98rem' }}>Confianza: <b>{activeTrade.confidence}%</b></div>
           <div style={{ color: '#64748b', fontSize: '0.95rem', marginTop: 4 }}>{activeTrade.timestamp}</div>

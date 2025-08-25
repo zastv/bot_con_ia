@@ -32,7 +32,7 @@ const TradingSignalsBot = () => {
   const [signalInterval, setSignalInterval] = useState(7000);
   const [maxSignals, setMaxSignals] = useState(8);
 
-  const { signals, loading, error, clearSignals, batchMeta, events, activeTrade: hookActiveTrade, history } = useSignalGeneration(
+  const { signals, loading, error, clearSignals, closeActiveTrade, batchMeta, events, activeTrade: hookActiveTrade, history } = useSignalGeneration(
     running,
     selectedPairs,
     signalInterval,
@@ -76,6 +76,7 @@ const TradingSignalsBot = () => {
           running={running}
           balance={balance}
           riskPct={riskPct}
+          onClose={() => closeActiveTrade('CANCELLED')}
         />
       </main>
 

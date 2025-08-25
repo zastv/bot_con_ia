@@ -30,11 +30,154 @@ export const useSignalGeneration = (
   const [activeTrade, setActiveTrade] = useState<Trade | null>(null);
   const [history, setHistory] = useState<Trade[]>([]);
 
+  // Persistencia en localStorage
+  const LS = {
+    active: 'tsb_active_trade',
+    history: 'tsb_history',
+    events: 'tsb_events',
+    batch: 'tsb_batch_meta',
+  } as const;
+
+  const safeSet = (k: string, v: any) => {
+    try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
+  };
+  const safeGet = <T,>(k: string, def: T): T => {
+    try {
+      const raw = localStorage.getItem(k);
+      if (!raw) return def;
+      const val = JSON.parse(raw);
+      return val as T;
+    } catch { return def; }
+  };
+
+  // Rehidratación al montar
+  useEffect(() => {
+    const persistedActive = safeGet<Trade | null>(LS.active, null);
+    const persistedHistory = safeGet<Trade[]>(LS.history, []);
+    const persistedEvents = safeGet<TradeEvent[]>(LS.events, []);
+    const persistedBatch = safeGet<{ batchStart: number|null; batchSignals: number; batchCount: number; nextBatchTime: number|null }>(LS.batch, { batchStart: null, batchSignals: 0, batchCount: 0, nextBatchTime: null });
+
+    if (persistedActive) setActiveTrade(persistedActive);
+    if (persistedHistory?.length) setHistory(persistedHistory);
+    if (persistedEvents?.length) setEvents(persistedEvents);
+    if (typeof persistedBatch.batchStart === 'number') setBatchStart(persistedBatch.batchStart);
+    if (typeof persistedBatch.batchSignals === 'number') setBatchSignals(persistedBatch.batchSignals);
+    if (typeof persistedBatch.batchCount === 'number') setBatchCount(persistedBatch.batchCount);
+    if (typeof persistedBatch.nextBatchTime === 'number') setNextBatchTime(persistedBatch.nextBatchTime);
+  }, []);
+
+  // Guardar al cambiar
+  useEffect(() => {
+    safeSet(LS.active, activeTrade);
+  }, [activeTrade]);
+
+  useEffect(() => {
+    safeSet(LS.history, history);
+  }, [history]);
+
+  useEffect(() => {
+    // limitar a 300 eventos por tamaño
+    const trimmed = events.slice(-300);
+    if (trimmed.length !== events.length) setEvents(trimmed);
+    safeSet(LS.events, trimmed);
+  }, [events]);
+
+  useEffect(() => {
+    safeSet(LS.batch, { batchStart, batchSignals, batchCount, nextBatchTime });
+  }, [batchStart, batchSignals, batchCount, nextBatchTime]);
+
+  // Claves de persistencia
+  const LS_ACTIVE_TRADE = 'tsb_active_trade';
+  const LS_HISTORY = 'tsb_history';
+  const LS_EVENTS = 'tsb_events';
+  const LS_BATCH = 'tsb_batch_meta';
+
+  // Rehidratación inicial desde localStorage
+  useEffect(() => {
+    try {
+      const savedActive = localStorage.getItem(LS_ACTIVE_TRADE);
+      const savedHistory = localStorage.getItem(LS_HISTORY);
+      const savedEvents = localStorage.getItem(LS_EVENTS);
+      const savedBatch = localStorage.getItem(LS_BATCH);
+
+      if (savedActive) {
+        const at: Trade | null = JSON.parse(savedActive);
+        if (at && at.status === 'ACTIVE') {
+          setActiveTrade(at);
+          setSignals([{ ...at }]);
+        }
+      }
+      if (savedHistory) {
+        const h: Trade[] = JSON.parse(savedHistory);
+        if (Array.isArray(h)) setHistory(h);
+      }
+      if (savedEvents) {
+        const e: TradeEvent[] = JSON.parse(savedEvents);
+        if (Array.isArray(e)) setEvents(e);
+      }
+      if (savedBatch) {
+        const bm: any = JSON.parse(savedBatch);
+        if (bm && typeof bm === 'object') {
+          if (typeof bm.batchCount === 'number') setBatchCount(bm.batchCount);
+          if (typeof bm.batchSignals === 'number') setBatchSignals(bm.batchSignals);
+          if (typeof bm.batchStart === 'number' || bm.batchStart === null) setBatchStart(bm.batchStart ?? null);
+          if (typeof bm.nextBatchTime === 'number' || bm.nextBatchTime === null) setNextBatchTime(bm.nextBatchTime ?? null);
+        }
+      }
+
+      // Anotar evento de reanudación para trazabilidad
+      setEvents(prev => [
+        ...prev,
+        {
+          id: Date.now(),
+          tradeId: (Date.now()),
+          pair: 'BTCUSD',
+          type: 'INFO',
+          message: 'Sesión restaurada. Reanudando monitoreo del estado previo.',
+          timestamp: new Date().toLocaleTimeString(),
+          batch: (typeof batchCount === 'number' ? batchCount + 1 : 1),
+        },
+      ]);
+    } catch {
+      // Ignorar errores de parseo y continuar
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persistencia automática
+  useEffect(() => {
+    try {
+      if (activeTrade) localStorage.setItem(LS_ACTIVE_TRADE, JSON.stringify(activeTrade));
+      else localStorage.removeItem(LS_ACTIVE_TRADE);
+    } catch {}
+  }, [activeTrade]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_HISTORY, JSON.stringify(history.slice(0, 200)));
+    } catch {}
+  }, [history]);
+
+  useEffect(() => {
+    try {
+      // Limitar eventos guardados
+      const toSave = events.slice(-500);
+      localStorage.setItem(LS_EVENTS, JSON.stringify(toSave));
+    } catch {}
+  }, [events]);
+
+  useEffect(() => {
+    try {
+      const meta = { batchCount, batchStart, batchSignals, nextBatchTime };
+      localStorage.setItem(LS_BATCH, JSON.stringify(meta));
+    } catch {}
+  }, [batchCount, batchStart, batchSignals, nextBatchTime]);
+
   useEffect(() => {
     if (!running) return;
     let cancelled = false;
 
-    const TICK = 10000; // 10s
+  const TICK = 10000; // 10s
     const BATCH_WINDOW = 30 * 60 * 1000; // 30 minutos
   const ADVERSE_TRIGGER = 0.005; // 0.5% movimiento adverso para evaluar cancelación
   const MIN_CONFIDENCE_OPEN = 70; // no abrir si no es favorable
@@ -44,8 +187,8 @@ export const useSignalGeneration = (
 
       const now = Date.now();
 
-      // Inicio de lote si no hay o si ya pasó la ventana
-      if (!batchStart || now - batchStart >= BATCH_WINDOW) {
+  // Inicio de lote si no hay o si ya pasó la ventana
+  if (!batchStart || now - batchStart >= BATCH_WINDOW) {
         setBatchStart(now);
         setBatchSignals(0);
         setBatchCount(prev => prev + 1);
@@ -199,7 +342,7 @@ export const useSignalGeneration = (
         }
 
         // Si la confianza no es suficiente, registrar INFO y no abrir
-        if (confidence < MIN_CONFIDENCE_OPEN) {
+  if (confidence < MIN_CONFIDENCE_OPEN) {
           setEvents(prev => [...prev, {
             id: Date.now(),
             tradeId: Date.now(),
@@ -256,11 +399,55 @@ export const useSignalGeneration = (
 
   const clearSignals = () => setSignals([]);
 
+  // Cierre manual de la operación activa
+  const closeActiveTrade = async (reason: 'CANCELLED' | 'EXPIRED' | 'TP' | 'SL' = 'CANCELLED') => {
+    if (!activeTrade) return;
+    try {
+      setLoading(true);
+      const api = activeTrade.pair === 'BTCUSD' ? 'BTCUSDT' : activeTrade.pair;
+      let price = activeTrade.entry;
+      try {
+        const p = await fetchPrice(api);
+        if (p && !isNaN(p)) price = p;
+      } catch {}
+      const exitPrice = price;
+      const rr = Math.abs(activeTrade.tp - activeTrade.entry) / Math.abs(activeTrade.entry - activeTrade.sl);
+      const resultPct = ((exitPrice - activeTrade.entry) / activeTrade.entry) * (activeTrade.signal === 'BUY' ? 100 : -100);
+      const closed: Trade = {
+        ...activeTrade,
+        status: 'CLOSED',
+        closedAt: new Date().toLocaleString(),
+        exitPrice,
+        closeReason: reason,
+        rr: parseFloat(rr.toFixed(2)),
+        resultPct: parseFloat(resultPct.toFixed(2)),
+      };
+      setHistory(prev => [closed, ...prev].slice(0, 50));
+      setActiveTrade(null);
+      setSignals([]);
+      setEvents(prev => [
+        ...prev,
+        {
+          id: Date.now(),
+          tradeId: activeTrade.id,
+          pair: activeTrade.pair,
+          type: reason === 'CANCELLED' ? 'CANCELLED' : reason === 'EXPIRED' ? 'EXPIRED' : reason === 'TP' ? 'HIT_TP' : 'HIT_SL',
+          message: `${activeTrade.display}: operación cerrada manualmente (${reason}). Salida ${exitPrice}. Resultado ${resultPct.toFixed(2)}%`,
+          timestamp: new Date().toLocaleTimeString(),
+          batch: batchCount + 1,
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return { 
     signals, 
     loading, 
     error, 
     clearSignals,
+    closeActiveTrade,
     batchMeta: {
       batchCount,
       batchSignals,
