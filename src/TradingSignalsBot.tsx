@@ -6,7 +6,7 @@ import SignalsTable from './components/SignalsTable';
 import TradeFeed from './components/TradeFeed';
 import { useSignalGeneration } from './hooks/useSignalGeneration';
 import { tradingPairs } from './data/tradingPairs';
-import { Signal } from './types';
+import { Signal, Trade } from './types';
 
 const TradingSignalsBot = () => {
   const [running, setRunning] = useState(true);
@@ -32,7 +32,7 @@ const TradingSignalsBot = () => {
   const [signalInterval, setSignalInterval] = useState(7000);
   const [maxSignals, setMaxSignals] = useState(8);
 
-  const { signals, loading, error, clearSignals, batchMeta, events } = useSignalGeneration(
+  const { signals, loading, error, clearSignals, batchMeta, events, activeTrade: hookActiveTrade, history } = useSignalGeneration(
     running,
     selectedPairs,
     signalInterval,
@@ -55,24 +55,11 @@ const TradingSignalsBot = () => {
     tradingPairs.find(p => p.symbol === s.pair)?.category === filterCategory
   );
 
-  // Actualizar activeTrade cuando se genere la primera señal
+  // Sin múltiples señales: tomar la activa del hook
   React.useEffect(() => {
-    if (signals.length > 0) {
-      // mantener visibleId si sigue existiendo; si no, usar la más reciente
-      let current = visibleId && signals.find(s => s.id === visibleId);
-      // Si no existe, intentar por preferencia de par
-      if (!current) {
-        const preferredPair = localStorage.getItem('preferred_pair');
-        if (preferredPair) current = signals.find(s => s.pair === preferredPair) || null;
-      }
-      const chosen = current || signals[0];
-      setActiveTrade(chosen);
-      setVisibleId(chosen.id);
-    } else {
-      setActiveTrade(null);
-      setVisibleId(null);
-    }
-  }, [signals]);
+    if (hookActiveTrade) setActiveTrade(hookActiveTrade);
+    else setActiveTrade(null);
+  }, [hookActiveTrade]);
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #181e2a 0%, #6d28d9 100%)', padding: 0, fontFamily: 'Inter, sans-serif' }}>
@@ -93,16 +80,52 @@ const TradingSignalsBot = () => {
       </main>
 
       <SignalsTable
-        filteredSignals={filteredSignals.slice(0, 2)}
+        filteredSignals={filteredSignals.slice(0, 1)}
         filterCategory={'All'}
         setFilterCategory={() => {}}
         categories={['All']}
-  onSetActive={(s) => { setActiveTrade(s); setVisibleId(s.id); try { localStorage.setItem('preferred_pair', s.pair); } catch {} }}
+        onSetActive={() => {}}
         batchMeta={batchMeta}
-  activeSignalId={visibleId}
       />
 
   <TradeFeed events={events} />
+
+      {/* Historial de operaciones cerradas */}
+      {history.length > 0 && (
+        <section style={{ maxWidth: 1200, margin: '24px auto', background: 'rgba(30,27,75,0.98)', borderRadius: 18, boxShadow: '0 2px 16px #0002', padding: 16 }}>
+          <h3 style={{ color: '#a78bfa', margin: '0 0 8px 0' }}>Historial</h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ color: '#93c5fd', textAlign: 'left' }}>
+                  <th style={{ padding: '8px' }}>Par</th>
+                  <th style={{ padding: '8px' }}>Dirección</th>
+                  <th style={{ padding: '8px' }}>Entrada</th>
+                  <th style={{ padding: '8px' }}>Salida</th>
+                  <th style={{ padding: '8px' }}>Motivo</th>
+                  <th style={{ padding: '8px' }}>RR</th>
+                  <th style={{ padding: '8px' }}>%</th>
+                  <th style={{ padding: '8px' }}>Cierre</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map(t => (
+                  <tr key={t.id} style={{ color: '#e2e8f0', borderTop: '1px solid #252a3d' }}>
+                    <td style={{ padding: '8px' }}>{t.display}</td>
+                    <td style={{ padding: '8px', color: t.signal === 'BUY' ? '#22d3ee' : '#f472b6' }}>{t.signal}</td>
+                    <td style={{ padding: '8px' }}>{t.entry}</td>
+                    <td style={{ padding: '8px' }}>{t.exitPrice}</td>
+                    <td style={{ padding: '8px' }}>{t.closeReason}</td>
+                    <td style={{ padding: '8px' }}>{t.rr?.toFixed(2)}</td>
+                    <td style={{ padding: '8px', color: (t.resultPct||0) >= 0 ? '#16e0b3' : '#f472b6' }}>{t.resultPct}%</td>
+                    <td style={{ padding: '8px' }}>{t.closedAt}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <style>{`
         .spin { animation: spin 1s linear infinite; }
