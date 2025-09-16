@@ -177,10 +177,16 @@ export const useSignalGeneration = (
     if (!running) return;
     let cancelled = false;
 
-  const TICK = 10000; // 10s
-    const BATCH_WINDOW = 30 * 60 * 1000; // 30 minutos
-  const ADVERSE_TRIGGER = 0.005; // 0.5% movimiento adverso para evaluar cancelación
-  const MIN_CONFIDENCE_OPEN = 70; // no abrir si no es favorable
+  const TICK = Math.max(1000, Number.isFinite(signalInterval as any) ? signalInterval : 3000);
+  // Ventana de lote más corta para scalp
+  const BATCH_WINDOW = 10 * 60 * 1000; // 10 minutos
+  // Triggers de gestión para SCALP
+  let ADVERSE_TRIGGER = 0.002; // -0.2% cancelar antes de SL si va mal
+  const SCALP_MAX_DURATION_MS = 5 * 60 * 1000; // expirar a los 5 minutos
+  let MIN_CONFIDENCE_OPEN = 65; // umbral base de confianza para abrir
+  const BE_TRIGGER = 0.0015; // +0.15% mover a BE
+  const TRAIL_TRIGGER = 0.003; // +0.3% empezar a tralear
+  const TRAIL_LOCK = 0.001; // asegurar 0.1% de ganancia
 
     const tick = setInterval(async () => {
       if (cancelled) return;
@@ -195,12 +201,35 @@ export const useSignalGeneration = (
         setNextBatchTime(now + BATCH_WINDOW);
       }
 
-      // Política profesional: solo una operación activa a la vez
+      // Política: solo una operación activa a la vez (scalp)
   if (activeTrade) {
         // Monitorear TP/SL
         try {
           const price = await fetchPrice(activeTrade.pair === 'BTCUSD' ? 'BTCUSDT' : activeTrade.pair);
           if (price && !isNaN(price)) {
+            const nowMs = Date.now();
+            const openedAtMs = activeTrade.openedAtMs || (activeTrade.openedAt ? new Date(activeTrade.openedAt).getTime() : nowMs);
+            // Expiración por tiempo (scalp rápido)
+            if (nowMs - openedAtMs >= SCALP_MAX_DURATION_MS) {
+              const exitPrice = price;
+              const rr = Math.abs(activeTrade.tp - activeTrade.entry) / Math.abs(activeTrade.entry - activeTrade.sl);
+              const resultPct = ((exitPrice - activeTrade.entry) / activeTrade.entry) * (activeTrade.signal === 'BUY' ? 100 : -100);
+              const closed: Trade = { ...activeTrade, status: 'CLOSED', closedAt: new Date().toLocaleString(), exitPrice, closeReason: 'EXPIRED' as any, rr: parseFloat(rr.toFixed(2)), resultPct: parseFloat(resultPct.toFixed(2)) };
+              setHistory(prev => [closed, ...prev].slice(0, 50));
+              setActiveTrade(null);
+              setSignals([]);
+              setEvents(prev => [...prev, {
+                id: Date.now(),
+                tradeId: activeTrade.id,
+                pair: activeTrade.pair,
+                type: 'EXPIRED',
+                message: `${activeTrade.display}: operación EXPIRADA por tiempo. Salida ${exitPrice}.`,
+                timestamp: new Date().toLocaleTimeString(),
+                batch: batchCount + 1,
+              }]);
+              return;
+            }
+
             const hitTP = activeTrade.signal === 'BUY' ? price >= activeTrade.tp : price <= activeTrade.tp;
             const hitSL = activeTrade.signal === 'BUY' ? price <= activeTrade.sl : price >= activeTrade.sl;
             if (hitTP || hitSL) {
@@ -221,6 +250,46 @@ export const useSignalGeneration = (
                 batch: batchCount + 1,
               }]);
               return; // ya gestionado
+            }
+
+            // Gestión dinámica: BE y trailing si va a favor
+            const favorablePct = activeTrade.signal === 'BUY'
+              ? (price - activeTrade.entry) / activeTrade.entry
+              : (activeTrade.entry - price) / activeTrade.entry;
+
+            // Move to Break-Even rápido
+            if (favorablePct >= BE_TRIGGER && !activeTrade.bePrice) {
+              const bePrice = activeTrade.entry;
+              const newSL = bePrice; // mover SL a BE
+              const updated: Trade = { ...activeTrade, sl: roundBySymbol(activeTrade.pair, newSL), bePrice };
+              setActiveTrade(updated);
+              setSignals([{ ...updated }]);
+              setEvents(prev => [...prev, {
+                id: Date.now(),
+                tradeId: activeTrade.id,
+                pair: activeTrade.pair,
+                type: 'INFO',
+                message: `${activeTrade.display}: SL movido a BE (+${(favorablePct*100).toFixed(2)}%).`,
+                timestamp: new Date().toLocaleTimeString(),
+                batch: batchCount + 1,
+              }]);
+            }
+
+            // Trailing para asegurar ganancia
+            if (favorablePct >= TRAIL_TRIGGER) {
+              let trailSL: number | null = null;
+              if (activeTrade.signal === 'BUY') {
+                const candidate = price * (1 - TRAIL_LOCK);
+                if (candidate > activeTrade.sl) trailSL = candidate;
+              } else {
+                const candidate = price * (1 + TRAIL_LOCK);
+                if (candidate < activeTrade.sl) trailSL = candidate;
+              }
+              if (trailSL !== null) {
+                const updated: Trade = { ...activeTrade, sl: roundBySymbol(activeTrade.pair, trailSL) };
+                setActiveTrade(updated);
+                setSignals([{ ...updated }]);
+              }
             }
 
             // Evaluar condiciones desfavorables (antes de llegar a SL)
@@ -266,7 +335,7 @@ export const useSignalGeneration = (
                   tp: tpOpp,
                   sl: slOpp,
                   timestamp: new Date().toLocaleString(),
-                  notes: 'Reversa por condiciones desfavorables previas. RR 2:1 (TP +2%, SL -1%).',
+                  notes: 'Reversa por condiciones desfavorables previas. Scalp: TP/SL cortos, BE y trailing.',
                   status: 'ACTIVE',
                   createdAt: new Date().toLocaleString(),
                   openedAt: new Date().toLocaleString(),
@@ -291,7 +360,7 @@ export const useSignalGeneration = (
         setLoading(true);
         setError(null);
 
-  const availablePairs = tradingPairs.filter(p => selectedPairs.includes(p.symbol)).filter(p => p.symbol === 'BTCUSD');
+  const availablePairs = tradingPairs.filter(p => selectedPairs.includes(p.symbol));
         if (availablePairs.length === 0) {
           setLoading(false);
           return;
@@ -312,9 +381,26 @@ export const useSignalGeneration = (
           return;
         }
 
-        // TP/SL por porcentaje: RR 2:1 (TP +2%, SL -1%)
-        const PCT_TP = 0.02; // +2%
-        const PCT_SL = 0.01; // -1%
+        // Aprendizaje simple: ajustar TP/SL y filtros según rendimiento reciente (últimas 12 operaciones)
+        const recent = history.slice(0, 12);
+        const wins = recent.filter(r => r.closeReason === 'TP' || (r.closeReason as any) === 'HIT_TP').length;
+        const losses = recent.filter(r => r.closeReason === 'SL' || (r.closeReason as any) === 'HIT_SL').length;
+        const cancels = recent.filter(r => r.closeReason === 'CANCELLED' || r.closeReason === 'EXPIRED').length;
+        const winRate = recent.length ? wins / recent.length : 0.5;
+        // Ajustes: si va mal, más conservador y salidas más rápidas
+        let PCT_TP = 0.0035; // 0.35%
+        let PCT_SL = 0.0025; // 0.25%
+        if (winRate < 0.45) {
+          PCT_TP = 0.0025; // 0.25%
+          PCT_SL = 0.0018; // 0.18%
+          MIN_CONFIDENCE_OPEN = 72;
+          ADVERSE_TRIGGER = 0.0015; // cortar antes
+        } else if (winRate > 0.6 && losses <= wins) {
+          PCT_TP = 0.0045; // 0.45%
+          PCT_SL = 0.0028; // 0.28%
+          MIN_CONFIDENCE_OPEN = 62;
+        }
+
         let tp = 0, sl = 0;
         if (isBuy) {
           tp = roundBySymbol(pairObj.symbol, entry * (1 + PCT_TP));
@@ -332,13 +418,13 @@ export const useSignalGeneration = (
 
   let notes = '';
         if (tfScore >= 3) {
-          notes = `Alta probabilidad: Coincidencia de tendencia en ${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}. \nRR 2:1 aplicado (TP +2%, SL -1%). \nSe detecta impulso fuerte y confirmación por indicadores técnicos (RSI, MACD, medias móviles). \nEl precio está cerca de soporte/resistencia relevante y el volumen acompaña el movimiento. \nSe recomienda gestión de riesgo adecuada.`;
+          notes = `Alta probabilidad (scalp): Confluencia en ${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}. TP/SL cortos (~0.25–0.45% / ~0.18–0.28%), BE y trailing activos.`;
         } else if (tfScore <= -3) {
-          notes = `Alta probabilidad: Coincidencia de tendencia en ${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}. \nRR 2:1 aplicado (TP +2%, SL -1%). \nSe observa agotamiento de la tendencia previa y señales de reversión en temporalidades mayores. \nConfirmación por patrones de velas y divergencia en indicadores. \nOperar con gestión de riesgo.`;
+          notes = `Alta probabilidad (scalp): Confluencia contraria en ${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}. TP/SL cortos, BE rápido y trailing.`;
         } else if (confidence < 70) {
-          notes = `Señal débil: Las temporalidades no están alineadas o hay alta volatilidad. \nRR 2:1 aplicado (TP +2%, SL -1%). \nFalta confirmación clara por indicadores técnicos. \nEvitar operar con lotaje alto y esperar mejor oportunidad.`;
+          notes = `Señal débil (scalp): temporalidades mixtas/volatilidad alta. Usar lotaje bajo o esperar mejor set-up (BE + trailing).`;
         } else {
-          notes = `Condiciones normales: Señal generada por coincidencia parcial en temporalidades (${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}). \nRR 2:1 aplicado (TP +2%, SL -1%). \nAlgunos indicadores confirman la entrada, pero el contexto no es óptimo. \nRevisar calendario económico y contexto de mercado antes de operar.`;
+          notes = `Condiciones normales (scalp): Coincidencia parcial en ${timeframes.filter((_,i)=>tfSignals[i]!==0).join(", ")}. Gestión: BE a +0.15%, trailing a +0.3%.`;
         }
 
         // Si la confianza no es suficiente, registrar INFO y no abrir
@@ -375,6 +461,7 @@ export const useSignalGeneration = (
             status: 'ACTIVE',
             createdAt: new Date().toLocaleString(),
             openedAt: new Date().toLocaleString(),
+            openedAtMs: Date.now(),
           };
           // Eventos: creada y activada inmediatamente
           const nowStr = new Date().toLocaleTimeString();

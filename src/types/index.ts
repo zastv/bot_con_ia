@@ -20,7 +20,7 @@ export interface TradingPair {
 
 // Estados de la operación
 export type TradeStatus = 'NEW' | 'ACTIVE' | 'CLOSED';
-export type TradeCloseReason = 'TP' | 'SL' | 'CANCELLED' | 'EXPIRED';
+export type TradeCloseReason = 'TP' | 'SL' | 'CANCELLED' | 'EXPIRED' | 'HIT_TP' | 'HIT_SL';
 
 export interface Trade extends Signal {
   status: TradeStatus;
@@ -31,6 +31,9 @@ export interface Trade extends Signal {
   closeReason?: TradeCloseReason;
   rr?: number; // RR logrado al cierre
   resultPct?: number; // % de resultado al cierre
+  // Campos opcionales para gestión avanzada (scalping)
+  openedAtMs?: number; // timestamp numérico para cálculos de expiración
+  bePrice?: number; // si se movió a break-even, precio de BE
 }
 
 export type TradeEventType = 'CREATED' | 'ACTIVATED' | 'HIT_TP' | 'HIT_SL' | 'CANCELLED' | 'EXPIRED' | 'INFO';
